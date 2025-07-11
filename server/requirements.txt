@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-multipart
+requests
+gitpython
+python-dotenv
+jinja2
+itsdangerous
+httpx
+openai
+pytest
+pytest-asyncio
+httpx 
