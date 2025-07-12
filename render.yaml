@@ -10,9 +10,9 @@ services:
         value: 3.11.0
       - key: ENVIRONMENT
         value: production
-      - key: GITHUB_CLIENT_ID
+      - key: UNIVERSAL_GITHUB_CLIENT_ID
         sync: false
-      - key: GITHUB_CLIENT_SECRET
+      - key: UNIVERSAL_GITHUB_CLIENT_SECRET
         sync: false
       - key: SECRET_KEY
         sync: false
