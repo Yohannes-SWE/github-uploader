@@ -39,6 +39,7 @@ import {
 import RenderDeploy from "./components/RenderDeploy"
 import FileUpload from "./components/FileUpload"
 import DeployWebsite from "./components/DeployWebsite"
+import { API_URL } from "./config"
 
 // Step Panel component
 function StepPanel({ children, value, index, ...other }) {
@@ -68,7 +69,9 @@ function App() {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch("/api/auth/status")
+      const response = await fetch(`${API_URL}/api/auth/status`, {
+        credentials: "include"
+      })
       const data = await response.json()
       setIsAuthenticated(data.authenticated)
       setGithubUsername(data.username || "")
@@ -206,7 +209,9 @@ function App() {
               size="large"
               fullWidth
               startIcon={<GitHub />}
-              onClick={() => (window.location.href = "/api/auth/github/login")}
+              onClick={() =>
+                (window.location.href = `${API_URL}/api/auth/github/login`)
+              }
               sx={{
                 py: 1.5,
                 fontSize: "1.1rem",
@@ -308,7 +313,10 @@ function App() {
               <Button
                 variant="outlined"
                 onClick={async () => {
-                  await fetch("/api/auth/logout", { method: "POST" })
+                  await fetch(`${API_URL}/api/auth/logout`, {
+                    method: "POST",
+                    credentials: "include"
+                  })
                   setIsAuthenticated(false)
                 }}
               >
