@@ -15,9 +15,51 @@ const AuthDebug = () => {
     }
     setUrlParams(paramsObj)
 
-    // Check auth status
-    checkAuthStatus()
+    // Check if we have a temp token to exchange
+    if (paramsObj.auth === "success" && paramsObj.token) {
+      exchangeTempToken(paramsObj.token)
+    } else {
+      // Check auth status
+      checkAuthStatus()
+    }
   }, [])
+
+  const exchangeTempToken = async (tempToken) => {
+    setLoading(true)
+    try {
+      console.log("Exchanging temporary token from debug component...")
+      const response = await fetch(`${API_URL}/api/auth/exchange-token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify({ temp_token: tempToken })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Token exchange successful:", data)
+        setAuthStatus(data)
+        // Clear URL parameters after successful exchange
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        )
+        setUrlParams({})
+      } else {
+        console.error("Token exchange failed")
+        const errorData = await response.json()
+        setAuthStatus({ error: errorData.error || "Token exchange failed" })
+      }
+    } catch (error) {
+      console.error("Token exchange error:", error)
+      setAuthStatus({ error: error.message })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const checkAuthStatus = async () => {
     setLoading(true)

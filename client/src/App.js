@@ -70,14 +70,42 @@ function App() {
     // Check if we're returning from OAuth callback
     const urlParams = new URLSearchParams(window.location.search)
     if (urlParams.get("auth") === "success") {
-      // Clear the URL parameter
+      const tempToken = urlParams.get("token")
+      if (tempToken) {
+        // Exchange temporary token for session
+        exchangeTempToken(tempToken)
+      }
+      // Clear the URL parameters
       window.history.replaceState({}, document.title, window.location.pathname)
-      // Re-check auth status after a short delay to ensure session is set
-      setTimeout(() => {
-        checkAuthStatus()
-      }, 500)
     }
   }, [])
+
+  const exchangeTempToken = async (tempToken) => {
+    try {
+      console.log("Exchanging temporary token...")
+      const response = await fetch(`${API_URL}/api/auth/exchange-token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify({ temp_token: tempToken })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Token exchange successful:", data)
+        setIsAuthenticated(data.authenticated)
+        setGithubUsername(data.username || "")
+      } else {
+        console.error("Token exchange failed")
+        const errorData = await response.json()
+        console.error("Error:", errorData)
+      }
+    } catch (error) {
+      console.error("Token exchange error:", error)
+    }
+  }
 
   const checkAuthStatus = async () => {
     try {

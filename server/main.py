@@ -261,10 +261,54 @@ def github_callback(request: Request, code: str, state: str = None, redirect_to:
     
     print(f"Successfully obtained access token")
     request.session["github_token"] = token
+    
+    # Create a temporary token for frontend authentication
+    import secrets
+    temp_token = secrets.token_urlsafe(32)
+    
+    # Store the temp token with the actual GitHub token (in production, use Redis)
+    TEMP_TOKENS = getattr(app.state, 'temp_tokens', {})
+    TEMP_TOKENS[temp_token] = {
+        'github_token': token,
+        'created_at': time.time(),
+        'expires_at': time.time() + 300  # 5 minutes
+    }
+    app.state.temp_tokens = TEMP_TOKENS
+    
     print(f"Redirecting to: {FRONTEND_URL}")
-    # Redirect to frontend with success parameter
-    redirect_url = f"{FRONTEND_URL}?auth=success"
+    # Redirect to frontend with temp token
+    redirect_url = f"{FRONTEND_URL}?auth=success&token={temp_token}"
     return RedirectResponse(redirect_url, status_code=302)
+
+@app.post("/api/auth/exchange-token")
+def exchange_temp_token(request: Request, temp_token: str):
+    """Exchange temporary token for session authentication"""
+    TEMP_TOKENS = getattr(app.state, 'temp_tokens', {})
+    
+    if temp_token in TEMP_TOKENS:
+        token_data = TEMP_TOKENS[temp_token]
+        
+        # Check if token is expired
+        if time.time() > token_data['expires_at']:
+            del TEMP_TOKENS[temp_token]
+            app.state.temp_tokens = TEMP_TOKENS
+            return JSONResponse({"error": "Token expired"}, status_code=400)
+        
+        # Set the GitHub token in session
+        request.session["github_token"] = token_data['github_token']
+        
+        # Clean up the temporary token
+        del TEMP_TOKENS[temp_token]
+        app.state.temp_tokens = TEMP_TOKENS
+        
+        try:
+            username = get_github_username(token_data['github_token'])
+            return {"authenticated": True, "message": "Successfully authenticated", "username": username}
+        except Exception as e:
+            print(f"Error getting GitHub username: {e}")
+            return {"authenticated": True, "message": "Successfully authenticated", "username": "GitHub User"}
+    else:
+        return JSONResponse({"error": "Invalid token"}, status_code=400)
 
 @app.get("/api/auth/status")
 def auth_status(request: Request):
