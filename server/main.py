@@ -24,6 +24,7 @@ if os.getenv("ENVIRONMENT") == "production":
     # Add common production frontend URLs
     production_origins = [
         "https://github-uploader-frontend.onrender.com",
+        "https://repotorpedo-frontend.onrender.com",
         "https://github-uploader.vercel.app",
         "https://github-uploader.netlify.app"
     ]
@@ -49,14 +50,19 @@ GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
-BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
-# Determine frontend URL - use PORT env var if set (from dev dashboard), otherwise use FRONTEND_URL
-CLIENT_PORT = os.getenv("PORT")
-if CLIENT_PORT:
-    FRONTEND_URL = f"http://localhost:{CLIENT_PORT}"
+# Determine URLs based on environment
+if os.getenv("ENVIRONMENT") == "production":
+    BASE_URL = os.getenv("BASE_URL", "https://repotorpedo-backend.onrender.com")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://repotorpedo-frontend.onrender.com")
 else:
-    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
+    # Determine frontend URL - use PORT env var if set (from dev dashboard), otherwise use FRONTEND_URL
+    CLIENT_PORT = os.getenv("PORT")
+    if CLIENT_PORT:
+        FRONTEND_URL = f"http://localhost:{CLIENT_PORT}"
+    else:
+        FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # GitHub API endpoints
 GITHUB_API_REPOS_URL = "https://api.github.com/user/repos"
