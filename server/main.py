@@ -41,12 +41,14 @@ if FRONTEND_URL and FRONTEND_URL not in ALLOWED_ORIGINS:
 
 print(f"CORS Allowed Origins: {ALLOWED_ORIGINS}")
 
+# Add CORS middleware with explicit configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Add a middleware to log CORS requests for debugging
@@ -102,6 +104,16 @@ def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "version": "2.0.0",
         "environment": os.getenv("ENVIRONMENT", "development")
+    }
+
+# --- CORS Test Endpoint ---
+@app.get("/api/cors-test")
+def cors_test():
+    from datetime import datetime
+    return {
+        "message": "CORS is working!",
+        "allowed_origins": ALLOWED_ORIGINS,
+        "timestamp": datetime.utcnow().isoformat()
     }
 
 # --- OAuth Endpoints ---
