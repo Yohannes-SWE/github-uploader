@@ -102,8 +102,9 @@ def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "version": "2.0.0",
-        "environment": os.getenv("ENVIRONMENT", "development")
+        "version": "2.0.1",
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "cors_origins": ALLOWED_ORIGINS
     }
 
 # --- CORS Test Endpoint ---
