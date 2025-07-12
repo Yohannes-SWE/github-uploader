@@ -11,7 +11,9 @@ const config = {
     }
   },
   production: {
-    apiUrl: process.env.REACT_APP_API_URL || "https://api.repotorpedo.com",
+    apiUrl:
+      process.env.REACT_APP_API_URL ||
+      "https://repotorpedo-backend.onrender.com",
     environment: "production",
     debug: false,
     features: {
@@ -40,8 +42,8 @@ export const FEATURES = currentConfig.features
 
 // Export domain information
 export const DOMAINS = {
-  frontend: "repotorpedo.com",
-  backend: "api.repotorpedo.com"
+  frontend: "repotorpedo-frontend.onrender.com",
+  backend: "repotorpedo-backend.onrender.com"
 }
 
 // Helper function to get full API URL
