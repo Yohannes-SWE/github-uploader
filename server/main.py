@@ -19,16 +19,27 @@ load_dotenv()
 app = FastAPI()
 
 # Get allowed origins from environment or use defaults
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
-if os.getenv("ENVIRONMENT") == "production":
-    # Add common production frontend URLs
-    production_origins = [
-        "https://github-uploader-frontend.onrender.com",
-        "https://repotorpedo-frontend.onrender.com",
-        "https://github-uploader.vercel.app",
-        "https://github-uploader.netlify.app"
-    ]
-    ALLOWED_ORIGINS.extend(production_origins)
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if os.getenv("ALLOWED_ORIGINS") else ["http://localhost:3000"]
+
+# Always add production frontend URLs to ensure CORS works
+production_origins = [
+    "https://github-uploader-frontend.onrender.com",
+    "https://repotorpedo-frontend.onrender.com",
+    "https://github-uploader.vercel.app",
+    "https://github-uploader.netlify.app"
+]
+
+# Add production origins if not already present
+for origin in production_origins:
+    if origin not in ALLOWED_ORIGINS:
+        ALLOWED_ORIGINS.append(origin)
+
+# Also add the FRONTEND_URL if it's set
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+if FRONTEND_URL and FRONTEND_URL not in ALLOWED_ORIGINS:
+    ALLOWED_ORIGINS.append(FRONTEND_URL)
+
+print(f"CORS Allowed Origins: {ALLOWED_ORIGINS}")
 
 app.add_middleware(
     CORSMiddleware,
