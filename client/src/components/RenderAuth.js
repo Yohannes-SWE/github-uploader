@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { API_URL } from "../config"
 import "./RenderAuth.css"
 
 const RenderAuth = ({ onAuthComplete }) => {
@@ -15,7 +16,7 @@ const RenderAuth = ({ onAuthComplete }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch("/api/auth/render/status", {
+      const response = await fetch(`${API_URL}/api/auth/render/status`, {
         credentials: "include"
       })
 
@@ -40,7 +41,7 @@ const RenderAuth = ({ onAuthComplete }) => {
     setStatus(null)
 
     try {
-      const response = await fetch("/api/auth/render/login", {
+      const response = await fetch(`${API_URL}/api/auth/render/login`, {
         credentials: "include"
       })
 
@@ -84,7 +85,7 @@ const RenderAuth = ({ onAuthComplete }) => {
     setStatus(null)
 
     try {
-      const response = await fetch("/api/auth/render/verify", {
+      const response = await fetch(`${API_URL}/api/auth/render/verify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -118,7 +119,7 @@ const RenderAuth = ({ onAuthComplete }) => {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch("/api/auth/render/logout", {
+      const response = await fetch(`${API_URL}/api/auth/render/logout`, {
         method: "POST",
         credentials: "include"
       })

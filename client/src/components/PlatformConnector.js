@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { API_URL } from "../config"
 import {
   Box,
   Card,
@@ -100,7 +101,7 @@ const PlatformConnector = ({ onPlatformConnected }) => {
 
   const fetchPlatformStatus = async () => {
     try {
-      const response = await fetch("/api/platforms/status")
+      const response = await fetch(`${API_URL}/api/platforms/status`)
       if (response.ok) {
         const data = await response.json()
         setPlatforms(data)
@@ -115,7 +116,9 @@ const PlatformConnector = ({ onPlatformConnected }) => {
   const connectPlatform = async (platform) => {
     setConnecting(true)
     try {
-      const response = await fetch(`/api/platforms/connect/${platform}`)
+      const response = await fetch(
+        `${API_URL}/api/platforms/connect/${platform}`
+      )
       if (response.ok) {
         const data = await response.json()
         // Open OAuth window
@@ -145,7 +148,9 @@ const PlatformConnector = ({ onPlatformConnected }) => {
 
   const disconnectPlatform = async (platform) => {
     try {
-      await fetch(`/api/platforms/disconnect/${platform}`, { method: "POST" })
+      await fetch(`${API_URL}/api/platforms/disconnect/${platform}`, {
+        method: "POST"
+      })
       fetchPlatformStatus()
     } catch (error) {
       console.error(`Failed to disconnect from ${platform}:`, error)
@@ -166,7 +171,7 @@ const PlatformConnector = ({ onPlatformConnected }) => {
   const setupPlatform = async () => {
     try {
       const response = await fetch(
-        `/api/platforms/setup/${setupDialog.platform}`,
+        `${API_URL}/api/platforms/setup/${setupDialog.platform}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

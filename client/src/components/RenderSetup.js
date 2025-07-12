@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { API_URL } from "../config"
 import "./RenderSetup.css"
 
 const RenderSetup = ({ onSetupComplete }) => {
@@ -13,7 +14,7 @@ const RenderSetup = ({ onSetupComplete }) => {
 
   const checkRenderStatus = async () => {
     try {
-      const response = await fetch("/api/render/status", {
+      const response = await fetch(`${API_URL}/api/render/status`, {
         credentials: "include"
       })
 
@@ -44,7 +45,7 @@ const RenderSetup = ({ onSetupComplete }) => {
     setStatus(null)
 
     try {
-      const response = await fetch("/api/render/setup", {
+      const response = await fetch(`${API_URL}/api/render/setup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -77,7 +78,7 @@ const RenderSetup = ({ onSetupComplete }) => {
 
   const handleClearCredentials = async () => {
     try {
-      const response = await fetch("/api/render/clear-credentials", {
+      const response = await fetch(`${API_URL}/api/render/clear-credentials`, {
         method: "POST",
         credentials: "include"
       })

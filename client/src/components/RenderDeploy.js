@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { API_URL } from "../config"
 import RenderAuth from "./RenderAuth"
 import "./RenderDeploy.css"
 
@@ -20,7 +21,7 @@ const RenderDeploy = () => {
 
   const checkRenderAuthStatus = async () => {
     try {
-      const response = await fetch("/api/auth/render/status", {
+      const response = await fetch(`${API_URL}/api/auth/render/status`, {
         credentials: "include"
       })
 
@@ -41,7 +42,7 @@ const RenderDeploy = () => {
 
   const loadDeploymentHistory = async () => {
     try {
-      const response = await fetch("/api/render/my-deployments", {
+      const response = await fetch(`${API_URL}/api/render/my-deployments`, {
         credentials: "include"
       })
 
@@ -80,7 +81,7 @@ const RenderDeploy = () => {
         })
       }
 
-      const response = await fetch("/api/render/deploy", {
+      const response = await fetch(`${API_URL}/api/render/deploy`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
