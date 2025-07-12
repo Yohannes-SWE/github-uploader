@@ -13,6 +13,11 @@ from dotenv import load_dotenv
 from typing import List
 import uuid
 import time
+import json
+import hashlib
+from pathlib import Path
+import secrets
+import base64
 
 load_dotenv()
 
@@ -95,6 +100,60 @@ GITHUB_OAUTH_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
 
 openai.api_key = OPENAI_API_KEY
 
+# Setup wizard state
+SETUP_FILE = "setup.json"
+SETUP_COMPLETE = False
+
+# Import OAuth configuration
+try:
+    from oauth_config import (
+        UNIVERSAL_GITHUB_CLIENT_ID, 
+        UNIVERSAL_GITHUB_CLIENT_SECRET,
+        GITHUB_OAUTH_AUTHORIZE_URL,
+        GITHUB_OAUTH_ACCESS_TOKEN_URL,
+        CALLBACK_URL,
+        SCOPES,
+        STATE_TIMEOUT,
+        MAX_STATES
+    )
+except ImportError:
+    # Fallback values if config file doesn't exist
+    UNIVERSAL_GITHUB_CLIENT_ID = "your_github_client_id_here"
+    UNIVERSAL_GITHUB_CLIENT_SECRET = "your_github_client_secret_here"
+    GITHUB_OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
+    GITHUB_OAUTH_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
+    CALLBACK_URL = "https://repotorpedo-backend.onrender.com/api/auth/github/callback"
+    SCOPES = ["repo", "user"]
+    STATE_TIMEOUT = 300
+    MAX_STATES = 1000
+
+# Store pending OAuth states (in production, use Redis or database)
+PENDING_OAUTH_STATES = {}
+
+def generate_oauth_state():
+    """Generate a secure random state for OAuth"""
+    return base64.urlsafe_b64encode(secrets.token_bytes(32)).decode('utf-8')
+
+def get_github_credentials():
+    """Get universal GitHub credentials"""
+    # Use environment variables for universal OAuth app
+    client_id = os.getenv("UNIVERSAL_GITHUB_CLIENT_ID", UNIVERSAL_GITHUB_CLIENT_ID)
+    client_secret = os.getenv("UNIVERSAL_GITHUB_CLIENT_SECRET", UNIVERSAL_GITHUB_CLIENT_SECRET)
+    
+    # Fallback to setup file if environment variables not set
+    if not client_id or not client_secret:
+        try:
+            if os.path.exists(SETUP_FILE):
+                with open(SETUP_FILE, 'r') as f:
+                    data = json.load(f)
+                    return data.get('github_client_id'), data.get('github_client_secret')
+        except Exception as e:
+            print(f"Error reading GitHub credentials: {e}")
+    
+    return client_id, client_secret
+
+# Initialize universal OAuth system
+
 # --- Health Check Endpoint ---
 @app.get("/health")
 def health_check():
@@ -117,26 +176,71 @@ def cors_test():
         "timestamp": datetime.utcnow().isoformat()
     }
 
-# --- OAuth Endpoints ---
+# --- Universal OAuth Status Endpoint ---
+@app.get("/api/oauth/status")
+def oauth_status(request: Request):
+    """Check OAuth configuration status"""
+    client_id, client_secret = get_github_credentials()
+    return {
+        "oauth_configured": bool(client_id and client_secret),
+        "ready": bool(client_id and client_secret)
+    }
+
+# --- Universal OAuth Endpoints ---
 @app.get("/api/auth/github/login")
-def github_login():
-    # Use production callback URL if in production environment
+def github_login(request: Request):
+    # Get universal GitHub credentials
+    client_id, client_secret = get_github_credentials()
+    
+    if not client_id:
+        return JSONResponse({
+            "error": "GitHub OAuth not configured",
+            "message": "Please contact administrator to configure OAuth"
+        }, status_code=400)
+    
+    # Generate secure state for OAuth flow
+    state = generate_oauth_state()
+    PENDING_OAUTH_STATES[state] = {
+        "timestamp": time.time(),
+        "user_agent": request.headers.get("user-agent", ""),
+        "ip": request.client.host if request.client else "unknown"
+    }
+    
+    # Use production callback URL
     callback_url = os.getenv("GITHUB_CALLBACK_URL", f"{BASE_URL}/api/auth/github/callback")
     
     params = {
-        "client_id": GITHUB_CLIENT_ID,
+        "client_id": client_id,
         "scope": "repo user",
-        "redirect_uri": callback_url
+        "redirect_uri": callback_url,
+        "state": state
     }
     url = requests.Request('GET', GITHUB_OAUTH_AUTHORIZE_URL, params=params).prepare().url
     return RedirectResponse(url)
 
 @app.get("/api/auth/github/callback")
-def github_callback(request: Request, code: str, redirect_to: str = None):
-    print(f"Received OAuth code: {code}")
+def github_callback(request: Request, code: str, state: str = None, redirect_to: str = None):
+    print(f"Received OAuth code: {code}, state: {state}")
+    
+    # Validate state parameter for security
+    if state and state in PENDING_OAUTH_STATES:
+        # Clean up old state
+        del PENDING_OAUTH_STATES[state]
+    else:
+        print("Warning: Invalid or missing state parameter")
+    
+    # Get universal GitHub credentials
+    client_id, client_secret = get_github_credentials()
+    
+    if not client_id or not client_secret:
+        return JSONResponse({
+            "error": "GitHub OAuth not configured",
+            "message": "Please contact administrator to configure OAuth"
+        }, status_code=400)
+    
     data = {
-        "client_id": GITHUB_CLIENT_ID,
-        "client_secret": GITHUB_CLIENT_SECRET,
+        "client_id": client_id,
+        "client_secret": client_secret,
         "code": code,
     }
     headers = {"Accept": "application/json"}
