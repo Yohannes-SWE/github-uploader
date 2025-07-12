@@ -49,6 +49,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add a middleware to log CORS requests for debugging
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"Request from origin: {request.headers.get('origin', 'No origin')}")
+    print(f"Request method: {request.method}")
+    print(f"Request path: {request.url.path}")
+    response = await call_next(request)
+    return response
+
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SECRET_KEY", "supersecret"),
