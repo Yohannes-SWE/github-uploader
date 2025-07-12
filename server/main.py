@@ -168,12 +168,14 @@ def health_check():
 
 # --- CORS Test Endpoint ---
 @app.get("/api/cors-test")
-def cors_test():
+def cors_test(request: Request):
     from datetime import datetime
     return {
         "message": "CORS is working!",
         "allowed_origins": ALLOWED_ORIGINS,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
+        "request_origin": request.headers.get("origin", "No origin"),
+        "cookies": dict(request.cookies)
     }
 
 # --- Universal OAuth Status Endpoint ---
@@ -260,7 +262,9 @@ def github_callback(request: Request, code: str, state: str = None, redirect_to:
     print(f"Successfully obtained access token")
     request.session["github_token"] = token
     print(f"Redirecting to: {FRONTEND_URL}")
-    return RedirectResponse(FRONTEND_URL, status_code=302)
+    # Redirect to frontend with success parameter
+    redirect_url = f"{FRONTEND_URL}?auth=success"
+    return RedirectResponse(redirect_url, status_code=302)
 
 @app.get("/api/auth/status")
 def auth_status(request: Request):

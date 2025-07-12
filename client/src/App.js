@@ -65,14 +65,27 @@ function App() {
 
   useEffect(() => {
     checkAuthStatus()
+
+    // Check if we're returning from OAuth callback
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get("auth") === "success") {
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname)
+      // Re-check auth status after a short delay to ensure session is set
+      setTimeout(() => {
+        checkAuthStatus()
+      }, 500)
+    }
   }, [])
 
   const checkAuthStatus = async () => {
     try {
+      console.log("Checking auth status...")
       const response = await fetch(`${API_URL}/api/auth/status`, {
         credentials: "include"
       })
       const data = await response.json()
+      console.log("Auth status response:", data)
       setIsAuthenticated(data.authenticated)
       setGithubUsername(data.username || "")
     } catch (error) {
