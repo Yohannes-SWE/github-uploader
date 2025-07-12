@@ -1,0 +1,389 @@
+.render-deploy-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.deploy-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.deploy-header h2 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.deploy-header p {
+  color: #7f8c8d;
+  font-size: 18px;
+  margin: 0 0 15px 0;
+}
+
+.user-info-badge {
+  display: inline-block;
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid #bbdefb;
+}
+
+.deploy-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+.deploy-form-section {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+  border: 1px solid #e1e5e9;
+}
+
+.deploy-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.form-control {
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+  font-family: inherit;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.form-control:disabled {
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-text {
+  font-size: 12px;
+  color: #7f8c8d;
+  margin-top: 6px;
+}
+
+.deploy-btn {
+  background-color: #27ae60;
+  color: white;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.deploy-btn:hover:not(:disabled) {
+  background-color: #229954;
+  transform: translateY(-1px);
+}
+
+.deploy-btn:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.deploy-results-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.deployment-result {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  border: 1px solid #e1e5e9;
+}
+
+.deployment-result.success {
+  border-left: 4px solid #27ae60;
+}
+
+.deployment-result.error {
+  border-left: 4px solid #e74c3c;
+}
+
+.deployment-result h4 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.deployment-result p {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+}
+
+.deployment-details {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+.deployment-details h5 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.deployment-urls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deployment-url {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.deployment-url strong {
+  min-width: 80px;
+  color: #2c3e50;
+}
+
+.deployment-url a {
+  color: #3498db;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.deployment-url a:hover {
+  text-decoration: underline;
+}
+
+.deployment-history {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  border: 1px solid #e1e5e9;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.history-header h4 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 14px;
+  min-width: auto;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.history-item {
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  padding: 15px;
+  background-color: #f8f9fa;
+}
+
+.history-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.history-item-header strong {
+  color: #2c3e50;
+  font-size: 16px;
+}
+
+.history-timestamp {
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+.history-item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.history-url {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.history-url strong {
+  min-width: 60px;
+  font-size: 12px;
+}
+
+.history-url a {
+  color: #3498db;
+  text-decoration: none;
+  word-break: break-all;
+  font-size: 12px;
+}
+
+.history-url a:hover {
+  text-decoration: underline;
+}
+
+.no-history {
+  text-align: center;
+  color: #7f8c8d;
+  font-style: italic;
+  margin: 20px 0;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .deploy-content {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+}
+
+@media (max-width: 768px) {
+  .render-deploy-container {
+    padding: 15px;
+  }
+
+  .deploy-header h2 {
+    font-size: 24px;
+  }
+
+  .deploy-header p {
+    font-size: 16px;
+  }
+
+  .deploy-form-section,
+  .deployment-result,
+  .deployment-history {
+    padding: 20px;
+  }
+
+  .history-item-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .deployment-url {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .deployment-url strong {
+    min-width: auto;
+  }
+}
+
+/* Loading animation */
+.deploy-btn:disabled {
+  position: relative;
+}
+
+.deploy-btn:disabled::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  border: 2px solid transparent;
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+@keyframes spin {
+  0% {
+    transform: translateY(-50%) rotate(0deg);
+  }
+  100% {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+
+/* Focus states for accessibility */
+.deploy-btn:focus,
+.form-control:focus {
+  outline: 2px solid #3498db;
+  outline-offset: 2px;
+}
+
+/* Animation for deployment results */
+.deployment-result {
+  animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,20 +1,46 @@
 version: "3.8"
+
 services:
-  server:
-    build: ./server
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    env_file:
-      - ./server/.env
     environment:
-      - NODE_ENV=production
+      - ENVIRONMENT=production
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - BASE_URL=${BASE_URL:-http://localhost:8000}
+      - GITHUB_CALLBACK_URL=${GITHUB_CALLBACK_URL:-http://localhost:8000/api/auth/github/callback}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
     restart: unless-stopped
-  client:
-    build: ./client
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3000:80"
     environment:
-      - NODE_ENV=production
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8000}
+      - REACT_APP_ENVIRONMENT=production
     depends_on:
-      - server
+      - backend
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  default:
+    name: github-uploader-network

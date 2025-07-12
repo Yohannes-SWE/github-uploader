@@ -12,14 +12,26 @@ import git
 from dotenv import load_dotenv
 from typing import List
 import uuid
+import time
 
 load_dotenv()
 
 app = FastAPI()
 
+# Get allowed origins from environment or use defaults
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+if os.getenv("ENVIRONMENT") == "production":
+    # Add common production frontend URLs
+    production_origins = [
+        "https://github-uploader-frontend.onrender.com",
+        "https://github-uploader.vercel.app",
+        "https://github-uploader.netlify.app"
+    ]
+    ALLOWED_ORIGINS.extend(production_origins)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,13 +67,27 @@ GITHUB_OAUTH_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
 
 openai.api_key = OPENAI_API_KEY
 
+# --- Health Check Endpoint ---
+@app.get("/health")
+def health_check():
+    from datetime import datetime
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "2.0.0",
+        "environment": os.getenv("ENVIRONMENT", "development")
+    }
+
 # --- OAuth Endpoints ---
 @app.get("/api/auth/github/login")
 def github_login():
+    # Use production callback URL if in production environment
+    callback_url = os.getenv("GITHUB_CALLBACK_URL", f"{BASE_URL}/api/auth/github/callback")
+    
     params = {
         "client_id": GITHUB_CLIENT_ID,
         "scope": "repo user",
-        "redirect_uri": "http://localhost:8000/api/auth/github/callback"
+        "redirect_uri": callback_url
     }
     url = requests.Request('GET', GITHUB_OAUTH_AUTHORIZE_URL, params=params).prepare().url
     return RedirectResponse(url)
@@ -1909,4 +1935,482 @@ def setup_travis_project(token: str, config: dict) -> dict:
             "message": "Travis CI synced with GitHub repositories"
         }
     else:
-        raise HTTPException(status_code=400, detail="Failed to sync Travis CI") 
+        raise HTTPException(status_code=400, detail="Failed to sync Travis CI")
+
+# --- Render API Deployment Endpoints ---
+
+@app.post("/api/render/setup")
+def setup_render_credentials(request: Request, api_key: str):
+    """Store user's Render API key in session for deployment"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Validate the Render API key by testing it
+    try:
+        test_response = requests.get(
+            "https://api.render.com/v1/services",
+            headers={"Authorization": f"Bearer {api_key}"}
+        )
+        
+        if test_response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Invalid Render API key")
+        
+        # Store API key in session (encrypted/secure)
+        request.session["render_api_key"] = api_key
+        request.session["render_verified"] = True
+        
+        return {
+            "status": "success",
+            "message": "Render API key verified and stored securely"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to verify Render API key: {str(e)}")
+
+@app.get("/api/render/status")
+def get_render_status(request: Request):
+    """Check if user has Render credentials set up"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    render_api_key = request.session.get("render_api_key")
+    render_verified = request.session.get("render_verified", False)
+    
+    return {
+        "render_configured": bool(render_api_key and render_verified),
+        "github_configured": bool(github_token)
+    }
+
+@app.post("/api/render/deploy")
+def deploy_to_render(request: Request, github_repo: str, project_name: str = None, 
+                    custom_env_vars: dict = None):
+    """Deploy any application to Render using user's API key"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Get user's Render API key from session
+    render_api_key = request.session.get("render_api_key")
+    if not render_api_key:
+        raise HTTPException(status_code=400, detail="Render API key not configured. Please set up your Render credentials first.")
+    
+    # Verify the API key is still valid
+    if not request.session.get("render_verified"):
+        raise HTTPException(status_code=400, detail="Render API key not verified. Please set up your Render credentials again.")
+    
+    try:
+        from render_deployer import UniversalRenderDeployer
+        
+        deployer = UniversalRenderDeployer(render_api_key)
+        
+        # Deploy the application
+        result = deployer.deploy_from_github(
+            github_repo=github_repo,
+            project_name=project_name,
+            custom_env_vars=custom_env_vars
+        )
+        
+        # Store deployment info in session for user to track
+        user_deployments = request.session.get("user_deployments", [])
+        deployment_info = {
+            "id": str(uuid.uuid4()),
+            "timestamp": time.time(),
+            "github_repo": github_repo,
+            "project_name": project_name,
+            "result": result
+        }
+        user_deployments.append(deployment_info)
+        request.session["user_deployments"] = user_deployments[-10:]  # Keep last 10 deployments
+        
+        return {
+            "status": "success",
+            "message": "Application deployed successfully",
+            "deployment": result,
+            "deployment_id": deployment_info["id"]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Deployment failed: {str(e)}")
+
+@app.post("/api/render/deploy-analyzed")
+def deploy_analyzed_project(request: Request, repo_url: str, project_name: str, 
+                           app_config: dict, custom_env_vars: dict = None):
+    """Deploy a project with pre-analyzed configuration using user's API key"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Get user's Render API key from session
+    render_api_key = request.session.get("render_api_key")
+    if not render_api_key:
+        raise HTTPException(status_code=400, detail="Render API key not configured. Please set up your Render credentials first.")
+    
+    try:
+        from render_deployer import UniversalRenderDeployer
+        
+        deployer = UniversalRenderDeployer(render_api_key)
+        
+        # Deploy the application with custom configuration
+        result = deployer.deploy_application(
+            repo_url=repo_url,
+            project_name=project_name,
+            app_config=app_config,
+            custom_env_vars=custom_env_vars
+        )
+        
+        # Store deployment info in session
+        user_deployments = request.session.get("user_deployments", [])
+        deployment_info = {
+            "id": str(uuid.uuid4()),
+            "timestamp": time.time(),
+            "repo_url": repo_url,
+            "project_name": project_name,
+            "result": result
+        }
+        user_deployments.append(deployment_info)
+        request.session["user_deployments"] = user_deployments[-10:]
+        
+        return {
+            "status": "success",
+            "message": "Application deployed successfully",
+            "deployment": result,
+            "deployment_id": deployment_info["id"]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Deployment failed: {str(e)}")
+
+@app.get("/api/render/services")
+def list_render_services(request: Request):
+    """List all Render services for the authenticated user"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Get user's Render API key from session
+    render_api_key = request.session.get("render_api_key")
+    if not render_api_key:
+        raise HTTPException(status_code=400, detail="Render API key not configured. Please set up your Render credentials first.")
+    
+    try:
+        from render_deployer import RenderDeployer
+        
+        deployer = RenderDeployer(render_api_key)
+        services = deployer.list_services()
+        
+        return {
+            "status": "success",
+            "services": services
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list services: {str(e)}")
+
+@app.get("/api/render/services/{service_id}")
+def get_render_service(request: Request, service_id: str):
+    """Get details of a specific Render service for the authenticated user"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Get user's Render API key from session
+    render_api_key = request.session.get("render_api_key")
+    if not render_api_key:
+        raise HTTPException(status_code=400, detail="Render API key not configured. Please set up your Render credentials first.")
+    
+    try:
+        from render_deployer import RenderDeployer
+        
+        deployer = RenderDeployer(render_api_key)
+        service = deployer.get_service(service_id)
+        
+        return {
+            "status": "success",
+            "service": service
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get service: {str(e)}")
+
+@app.post("/api/render/services/{service_id}/deploy")
+def deploy_render_service(request: Request, service_id: str):
+    """Trigger a deployment for a specific Render service"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Get user's Render API key from session
+    render_api_key = request.session.get("render_api_key")
+    if not render_api_key:
+        raise HTTPException(status_code=400, detail="Render API key not configured. Please set up your Render credentials first.")
+    
+    try:
+        from render_deployer import RenderDeployer
+        
+        deployer = RenderDeployer(render_api_key)
+        deployment = deployer.deploy_service(service_id)
+        
+        return {
+            "status": "success",
+            "message": "Deployment triggered successfully",
+            "deployment": deployment
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to trigger deployment: {str(e)}")
+
+@app.get("/api/render/deployments/{service_id}/{deploy_id}")
+def get_deployment_status(request: Request, service_id: str, deploy_id: str):
+    """Get the status of a specific deployment"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Get user's Render API key from session
+    render_api_key = request.session.get("render_api_key")
+    if not render_api_key:
+        raise HTTPException(status_code=400, detail="Render API key not configured. Please set up your Render credentials first.")
+    
+    try:
+        from render_deployer import RenderDeployer
+        
+        deployer = RenderDeployer(render_api_key)
+        status = deployer.get_deployment_status(service_id, deploy_id)
+        
+        return {
+            "status": "success",
+            "deployment_status": status
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get deployment status: {str(e)}")
+
+@app.get("/api/render/my-deployments")
+def get_user_deployments(request: Request):
+    """Get deployment history for the current user"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    user_deployments = request.session.get("user_deployments", [])
+    
+    return {
+        "status": "success",
+        "deployments": user_deployments
+    }
+
+@app.post("/api/render/analyze")
+def analyze_for_render_deployment(request: Request, files: List[UploadFile] = File(...)):
+    """Analyze uploaded files to determine optimal Render deployment configuration"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    temp_dir = tempfile.mkdtemp()
+    
+    try:
+        # Save all files to temp directory
+        for file in files:
+            path_parts = file.filename.split('/')
+            if len(path_parts) > 1:
+                relative_path = '/'.join(path_parts[1:])
+            else:
+                relative_path = file.filename
+            
+            file_path = os.path.join(temp_dir, relative_path)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+        
+        # Analyze the project
+        from render_deployer import UniversalRenderDeployer
+        
+        deployer = UniversalRenderDeployer("dummy_key")  # We only need analysis, not deployment
+        app_config = deployer.detect_application_type(temp_dir)
+        
+        # Generate suggested configurations
+        backend_config = None
+        frontend_config = None
+        
+        if app_config.get("backend"):
+            backend_config = deployer.generate_backend_config(app_config["backend"], "project-name")
+        
+        if app_config.get("frontend"):
+            frontend_config = deployer.generate_frontend_config(app_config["frontend"], "project-name")
+        
+        return {
+            "status": "success",
+            "analysis": app_config,
+            "suggested_configs": {
+                "backend": backend_config.__dict__ if backend_config else None,
+                "frontend": frontend_config.__dict__ if frontend_config else None
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+    
+    finally:
+        # Clean up temp directory
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+@app.post("/api/render/clear-credentials")
+def clear_render_credentials(request: Request):
+    """Clear user's Render API key from session"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Clear Render credentials from session
+    request.session.pop("render_api_key", None)
+    request.session.pop("render_verified", None)
+    
+    return {
+        "status": "success",
+        "message": "Render credentials cleared from session"
+    }
+
+# --- Render OAuth-like Authentication Endpoints ---
+
+@app.get("/api/auth/render/login")
+def render_login():
+    """Initiate Render authentication flow - redirects to Render dashboard"""
+    # Redirect to Render API key page with instructions
+    render_api_url = "https://dashboard.render.com/account/api-keys"
+    
+    # Store state for verification
+    state = str(uuid.uuid4())
+    
+    return {
+        "auth_url": render_api_url,
+        "state": state,
+        "instructions": {
+            "title": "Get Your Render API Key",
+            "steps": [
+                "1. Click the link above to go to your Render dashboard",
+                "2. Navigate to Account → API Keys",
+                "3. Click 'Create API Key'",
+                "4. Give it a name like 'GitHub Uploader'",
+                "5. Copy the generated API key (starts with 'rnd_')",
+                "6. Return here and paste it in the setup form"
+            ]
+        }
+    }
+
+@app.post("/api/auth/render/verify")
+def verify_render_api_key(request: Request, api_key: str):
+    """Verify and store Render API key (OAuth-like flow)"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Validate the Render API key format
+    if not api_key.startswith("rnd_"):
+        raise HTTPException(status_code=400, detail="Invalid API key format. Render API keys start with 'rnd_'")
+    
+    # Test the API key by making a request to Render API
+    try:
+        test_response = requests.get(
+            "https://api.render.com/v1/services",
+            headers={"Authorization": f"Bearer {api_key}"}
+        )
+        
+        if test_response.status_code == 401:
+            raise HTTPException(status_code=400, detail="Invalid API key. Please check your key and try again.")
+        elif test_response.status_code == 403:
+            raise HTTPException(status_code=400, detail="API key doesn't have required permissions. Please create a new key with full access.")
+        elif test_response.status_code != 200:
+            raise HTTPException(status_code=400, detail=f"API key validation failed. Status: {test_response.status_code}")
+        
+        # Get user info from Render API
+        user_response = requests.get(
+            "https://api.render.com/v1/user",
+            headers={"Authorization": f"Bearer {api_key}"}
+        )
+        
+        user_info = {}
+        if user_response.status_code == 200:
+            user_data = user_response.json()
+            user_info = {
+                "email": user_data.get("email"),
+                "name": user_data.get("name"),
+                "account_id": user_data.get("account_id")
+            }
+        
+        # Store API key and user info in session
+        request.session["render_api_key"] = api_key
+        request.session["render_verified"] = True
+        request.session["render_user_info"] = user_info
+        
+        return {
+            "status": "success",
+            "message": "Render authentication successful!",
+            "user_info": user_info
+        }
+        
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=400, detail=f"Failed to verify API key: {str(e)}")
+
+@app.get("/api/auth/render/status")
+def get_render_auth_status(request: Request):
+    """Check Render authentication status"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    render_api_key = request.session.get("render_api_key")
+    render_verified = request.session.get("render_verified", False)
+    render_user_info = request.session.get("render_user_info", {})
+    
+    return {
+        "render_authenticated": bool(render_api_key and render_verified),
+        "github_authenticated": bool(github_token),
+        "user_info": render_user_info if render_verified else None
+    }
+
+@app.post("/api/auth/render/logout")
+def render_logout(request: Request):
+    """Clear Render authentication"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Clear Render credentials
+    request.session.pop("render_api_key", None)
+    request.session.pop("render_verified", None)
+    request.session.pop("render_user_info", None)
+    
+    return {
+        "status": "success",
+        "message": "Render authentication cleared"
+    }

@@ -11,21 +11,43 @@ import {
   CardContent,
   Alert,
   CircularProgress,
-  Tabs,
-  Tab,
-  Chip
+  Stepper,
+  Step,
+  StepLabel,
+  StepContent,
+  Chip,
+  Divider,
+  IconButton,
+  Tooltip
 } from "@mui/material"
-import { CloudUpload, GitHub, Settings, Link } from "@mui/icons-material"
-import PlatformConnector from "./components/PlatformConnector"
+import {
+  GitHub,
+  CloudUpload,
+  Settings,
+  Link,
+  CheckCircle,
+  Error,
+  Info,
+  Help,
+  Launch,
+  FolderOpen,
+  Deploy,
+  Security,
+  Speed,
+  Free
+} from "@mui/icons-material"
+import RenderDeploy from "./components/RenderDeploy"
+import FileUpload from "./components/FileUpload"
+import DeployWebsite from "./components/DeployWebsite"
 
-// Tab Panel component
-function TabPanel({ children, value, index, ...other }) {
+// Step Panel component
+function StepPanel({ children, value, index, ...other }) {
   return (
     <div
       role="tabpanel"
       hidden={value !== index}
-      id={`simple-tabpanel-${index}`}
-      aria-labelledby={`simple-tab-${index}`}
+      id={`step-panel-${index}`}
+      aria-labelledby={`step-${index}`}
       {...other}
     >
       {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
@@ -34,22 +56,11 @@ function TabPanel({ children, value, index, ...other }) {
 }
 
 function App() {
-  const [tabValue, setTabValue] = useState(0)
+  const [currentStep, setCurrentStep] = useState(0)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [githubUsername, setGithubUsername] = useState("")
-  const [files, setFiles] = useState([])
-  const [repoName, setRepoName] = useState("")
-  const [commitMessage, setCommitMessage] = useState("Initial commit")
-  const [selectedPlatform, setSelectedPlatform] = useState("")
-  const [cicdPlatform, setCicdPlatform] = useState("github-actions")
-  const [projectType, setProjectType] = useState("auto")
-  const [aiSuggestions, setAiSuggestions] = useState(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [uploadStatus, setUploadStatus] = useState("")
-  const [uploadResult, setUploadResult] = useState(null)
-  const [connectedPlatforms, setConnectedPlatforms] = useState([])
+  const [showHelp, setShowHelp] = useState(false)
 
   useEffect(() => {
     checkAuthStatus()
@@ -68,12 +79,16 @@ function App() {
     }
   }
 
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue)
+  const handleNext = () => {
+    setCurrentStep((prevStep) => prevStep + 1)
   }
 
-  const handlePlatformConnected = (platform) => {
-    setConnectedPlatforms((prev) => [...prev, platform])
+  const handleBack = () => {
+    setCurrentStep((prevStep) => prevStep - 1)
+  }
+
+  const handleStepClick = (step) => {
+    setCurrentStep(step)
   }
 
   if (checkingAuth) {
@@ -81,11 +96,16 @@ function App() {
       <Container maxWidth="md">
         <Box
           display="flex"
+          flexDirection="column"
           justifyContent="center"
           alignItems="center"
           minHeight="100vh"
+          textAlign="center"
         >
-          <CircularProgress />
+          <CircularProgress size={60} sx={{ mb: 3 }} />
+          <Typography variant="h6" color="text.secondary">
+            Loading your workspace...
+          </Typography>
         </Box>
       </Container>
     )
@@ -100,115 +120,315 @@ function App() {
           alignItems="center"
           justifyContent="center"
           minHeight="100vh"
+          textAlign="center"
         >
-          <Typography variant="h3" gutterBottom>
-            GitHub Uploader
-          </Typography>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            Upload projects to GitHub with AI assistance and CI/CD automation
-          </Typography>
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={<GitHub />}
-            onClick={() => (window.location.href = "/api/auth/github/login")}
-            sx={{ mt: 3 }}
-          >
-            Login with GitHub
-          </Button>
+          {/* Hero Section */}
+          <Box sx={{ mb: 6 }}>
+            <Typography
+              variant="h2"
+              gutterBottom
+              sx={{ fontWeight: 700, color: "#1976d2" }}
+            >
+              Deploy Your Website
+            </Typography>
+            <Typography
+              variant="h5"
+              color="text.secondary"
+              gutterBottom
+              sx={{ mb: 3 }}
+            >
+              Get your website online in minutes, not hours
+            </Typography>
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{ maxWidth: 600, mx: "auto" }}
+            >
+              Upload your website files and we'll deploy them to the internet
+              for free. No technical knowledge required - just drag, drop, and
+              deploy!
+            </Typography>
+          </Box>
+
+          {/* Benefits Cards */}
+          <Grid container spacing={3} sx={{ mb: 6, maxWidth: 800 }}>
+            <Grid item xs={12} md={4}>
+              <Card sx={{ height: "100%", textAlign: "center", p: 2 }}>
+                <Speed sx={{ fontSize: 40, color: "#4caf50", mb: 1 }} />
+                <Typography variant="h6" gutterBottom>
+                  Fast & Easy
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Deploy in under 2 minutes with our guided process
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Card sx={{ height: "100%", textAlign: "center", p: 2 }}>
+                <Free sx={{ fontSize: 40, color: "#ff9800", mb: 1 }} />
+                <Typography variant="h6" gutterBottom>
+                  100% Free
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Free hosting with 750 hours per month included
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Card sx={{ height: "100%", textAlign: "center", p: 2 }}>
+                <Security sx={{ fontSize: 40, color: "#2196f3", mb: 1 }} />
+                <Typography variant="h6" gutterBottom>
+                  Secure & Reliable
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Automatic HTTPS, backups, and 99.9% uptime
+                </Typography>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Login Section */}
+          <Paper sx={{ p: 4, maxWidth: 400, width: "100%" }}>
+            <Typography variant="h5" gutterBottom textAlign="center">
+              Let's Get Started
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              textAlign="center"
+              sx={{ mb: 3 }}
+            >
+              First, we'll connect to your GitHub account to store your website
+              files
+            </Typography>
+            <Button
+              variant="contained"
+              size="large"
+              fullWidth
+              startIcon={<GitHub />}
+              onClick={() => (window.location.href = "/api/auth/github/login")}
+              sx={{
+                py: 1.5,
+                fontSize: "1.1rem",
+                background: "linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)"
+              }}
+            >
+              Continue with GitHub
+            </Button>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              textAlign="center"
+              sx={{ display: "block", mt: 2 }}
+            >
+              Don't have GitHub?{" "}
+              <a
+                href="https://github.com/join"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#1976d2" }}
+              >
+                Create a free account
+              </a>
+            </Typography>
+          </Paper>
+
+          {/* Help Section */}
+          <Box sx={{ mt: 4, textAlign: "center" }}>
+            <Button
+              startIcon={<Help />}
+              onClick={() => setShowHelp(!showHelp)}
+              color="primary"
+            >
+              How does this work?
+            </Button>
+            {showHelp && (
+              <Paper sx={{ p: 3, mt: 2, maxWidth: 600 }}>
+                <Typography variant="h6" gutterBottom>
+                  How It Works
+                </Typography>
+                <Box component="ol" sx={{ pl: 2 }}>
+                  <Typography component="li" sx={{ mb: 1 }}>
+                    <strong>Connect GitHub:</strong> We'll connect to your
+                    GitHub account to store your website files
+                  </Typography>
+                  <Typography component="li" sx={{ mb: 1 }}>
+                    <strong>Upload Files:</strong> Drag and drop your website
+                    files (HTML, CSS, images, etc.)
+                  </Typography>
+                  <Typography component="li" sx={{ mb: 1 }}>
+                    <strong>Connect Render:</strong> We'll help you connect to
+                    Render for free hosting
+                  </Typography>
+                  <Typography component="li" sx={{ mb: 1 }}>
+                    <strong>Deploy:</strong> Your website goes live with a
+                    public URL in minutes!
+                  </Typography>
+                </Box>
+              </Paper>
+            )}
+          </Box>
         </Box>
       </Container>
     )
   }
 
+  // Main app after authentication
   return (
     <Container maxWidth="lg">
       <Box sx={{ width: "100%", mt: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          GitHub Uploader
-        </Typography>
-        <Typography variant="body1" color="text.secondary" gutterBottom>
-          Welcome, {githubUsername}! Connect platforms and upload your projects.
-        </Typography>
-
-        <Box sx={{ borderBottom: 1, borderColor: "divider", mt: 3 }}>
-          <Tabs
-            value={tabValue}
-            onChange={handleTabChange}
-            aria-label="main tabs"
+        {/* Header */}
+        <Box sx={{ mb: 4 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2
+            }}
           >
-            <Tab label="Upload Project" icon={<CloudUpload />} />
-            <Tab label="Platform Connections" icon={<Link />} />
-            <Tab label="Settings" icon={<Settings />} />
-          </Tabs>
+            <Box>
+              <Typography
+                variant="h3"
+                gutterBottom
+                sx={{ fontWeight: 700, color: "#1976d2" }}
+              >
+                Deploy Your Website
+              </Typography>
+              <Typography variant="h6" color="text.secondary">
+                Welcome back, {githubUsername}! Let's get your website online.
+              </Typography>
+            </Box>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Tooltip title="Help">
+                <IconButton onClick={() => setShowHelp(!showHelp)}>
+                  <Help />
+                </IconButton>
+              </Tooltip>
+              <Button
+                variant="outlined"
+                onClick={async () => {
+                  await fetch("/api/auth/logout", { method: "POST" })
+                  setIsAuthenticated(false)
+                }}
+              >
+                Logout
+              </Button>
+            </Box>
+          </Box>
+
+          {/* Progress Stepper */}
+          <Stepper activeStep={currentStep} alternativeLabel sx={{ mb: 4 }}>
+            <Step>
+              <StepLabel
+                StepIconProps={{
+                  onClick: () => handleStepClick(0),
+                  sx: { cursor: "pointer" }
+                }}
+              >
+                Connect Render
+              </StepLabel>
+            </Step>
+            <Step>
+              <StepLabel
+                StepIconProps={{
+                  onClick: () => handleStepClick(1),
+                  sx: { cursor: "pointer" }
+                }}
+              >
+                Upload Files
+              </StepLabel>
+            </Step>
+            <Step>
+              <StepLabel
+                StepIconProps={{
+                  onClick: () => handleStepClick(2),
+                  sx: { cursor: "pointer" }
+                }}
+              >
+                Deploy Website
+              </StepLabel>
+            </Step>
+          </Stepper>
         </Box>
 
-        <TabPanel value={tabValue} index={0}>
-          {/* Upload Project Tab */}
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={8}>
-              {/* Existing upload functionality */}
-              <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Upload Project
-                </Typography>
-                {/* Your existing upload form components */}
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              {/* Connected Platforms Summary */}
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Connected Platforms
-                </Typography>
-                {connectedPlatforms.length > 0 ? (
-                  <Box>
-                    {connectedPlatforms.map((platform) => (
-                      <Chip
-                        key={platform}
-                        label={platform}
-                        color="success"
-                        sx={{ mr: 1, mb: 1 }}
-                      />
-                    ))}
-                  </Box>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    No platforms connected yet. Connect platforms to enable
-                    automatic deployment.
-                  </Typography>
-                )}
-              </Paper>
-            </Grid>
-          </Grid>
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={1}>
-          {/* Platform Connections Tab */}
-          <PlatformConnector onPlatformConnected={handlePlatformConnected} />
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={2}>
-          {/* Settings Tab */}
-          <Paper sx={{ p: 3 }}>
+        {/* Help Section */}
+        {showHelp && (
+          <Alert severity="info" sx={{ mb: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Settings
+              Quick Guide
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Manage your account settings and preferences.
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              <strong>Step 1:</strong> Connect your Render account for free
+              hosting
             </Typography>
-            <Button
-              variant="outlined"
-              onClick={async () => {
-                await fetch("/api/auth/logout", { method: "POST" })
-                setIsAuthenticated(false)
-              }}
-              sx={{ mt: 2 }}
-            >
-              Logout
-            </Button>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              <strong>Step 2:</strong> Upload your website files (HTML, CSS,
+              images, etc.)
+            </Typography>
+            <Typography variant="body2">
+              <strong>Step 3:</strong> Deploy and get your live website URL
+            </Typography>
+          </Alert>
+        )}
+
+        {/* Step Content */}
+        <StepPanel value={currentStep} index={0}>
+          <Paper sx={{ p: 4 }}>
+            <Typography variant="h5" gutterBottom>
+              Step 1: Connect Your Hosting Account
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              We'll connect to Render to host your website for free. This is
+              where your website will live on the internet.
+            </Typography>
+            <RenderDeploy />
           </Paper>
-        </TabPanel>
+        </StepPanel>
+
+        <StepPanel value={currentStep} index={1}>
+          <Paper sx={{ p: 4 }}>
+            <Typography variant="h5" gutterBottom>
+              Step 2: Upload Your Website Files
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Drag and drop your website files here. We support HTML, CSS,
+              JavaScript, images, and more.
+            </Typography>
+            <FileUpload />
+          </Paper>
+        </StepPanel>
+
+        <StepPanel value={currentStep} index={2}>
+          <Paper sx={{ p: 4 }}>
+            <Typography variant="h5" gutterBottom>
+              Step 3: Deploy Your Website
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Click deploy to make your website live on the internet. You'll get
+              a public URL to share with others.
+            </Typography>
+            <DeployWebsite />
+          </Paper>
+        </StepPanel>
+
+        {/* Navigation */}
+        <Box sx={{ display: "flex", justifyContent: "space-between", mt: 4 }}>
+          <Button
+            disabled={currentStep === 0}
+            onClick={handleBack}
+            sx={{ mr: 1 }}
+          >
+            Back
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleNext}
+            disabled={currentStep === 2}
+          >
+            {currentStep === 2 ? "Finish" : "Next"}
+          </Button>
+        </Box>
       </Box>
     </Container>
   )

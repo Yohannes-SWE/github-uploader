@@ -17,9 +17,11 @@
   },
   "scripts": {
     "start": "NODE_OPTIONS='--no-deprecation' react-scripts start",
-    "build": "react-scripts build",
+    "build": "GENERATE_SOURCEMAP=false react-scripts build",
+    "build:dev": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "analyze": "npm run build && npx serve -s build"
   },
   "browserslist": {
     "production": [
@@ -33,5 +35,9 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:8000"
+  "proxy": "http://localhost:8000",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
 }
