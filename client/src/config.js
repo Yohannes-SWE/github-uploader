@@ -24,13 +24,17 @@ const config = {
   }
 }
 
-// Get current environment
-const environment = process.env.REACT_APP_ENVIRONMENT || "development"
+// Get current environment - default to production if on Render
+const isRenderDeployment = window.location.hostname.includes("onrender.com")
+const environment =
+  process.env.REACT_APP_ENVIRONMENT ||
+  (isRenderDeployment ? "production" : "development")
 
 // Debug logging
 console.log("Environment detection:", {
   REACT_APP_ENVIRONMENT: process.env.REACT_APP_ENVIRONMENT,
   REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+  isRenderDeployment: isRenderDeployment,
   detectedEnvironment: environment
 })
 
