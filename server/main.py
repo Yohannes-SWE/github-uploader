@@ -2495,32 +2495,130 @@ def clear_render_credentials(request: Request):
         "message": "Render credentials cleared from session"
     }
 
-# --- Render OAuth-like Authentication Endpoints ---
+# --- Render OAuth Authentication Endpoints ---
 
 @app.get("/api/auth/render/login")
-def render_login():
-    """Initiate Render authentication flow - redirects to Render dashboard"""
-    # Redirect to Render API key page with instructions
-    render_api_url = "https://dashboard.render.com/account/api-keys"
+def render_login(request: Request):
+    """Initiate Render OAuth authentication flow"""
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
     
-    # Store state for verification
-    state = str(uuid.uuid4())
+    # Generate secure state for OAuth flow
+    state = generate_oauth_state()
+    PENDING_OAUTH_STATES[state] = {
+        "timestamp": time.time(),
+        "user_agent": request.headers.get("user-agent", ""),
+        "ip": request.client.host if request.client else "unknown",
+        "type": "render"
+    }
+    
+    # Render OAuth configuration
+    render_client_id = os.getenv("RENDER_CLIENT_ID", "your_render_client_id")
+    render_redirect_uri = f"{BASE_URL}/api/auth/render/callback"
+    
+    # Build OAuth URL
+    oauth_params = {
+        "client_id": render_client_id,
+        "redirect_uri": render_redirect_uri,
+        "response_type": "code",
+        "scope": "read:user read:email deploy",
+        "state": state
+    }
+    
+    oauth_url = "https://render.com/oauth/authorize"
+    url = requests.Request('GET', oauth_url, params=oauth_params).prepare().url
     
     return {
-        "auth_url": render_api_url,
+        "auth_url": url,
         "state": state,
-        "instructions": {
-            "title": "Get Your Render API Key",
-            "steps": [
-                "1. Click the link above to go to your Render dashboard",
-                "2. Navigate to Account → API Keys",
-                "3. Click 'Create API Key'",
-                "4. Give it a name like 'GitHub Uploader'",
-                "5. Copy the generated API key (starts with 'rnd_')",
-                "6. Return here and paste it in the setup form"
-            ]
-        }
+        "type": "oauth"
     }
+
+@app.get("/api/auth/render/callback")
+def render_callback(request: Request, code: str, state: str = None):
+    """Handle Render OAuth callback"""
+    print(f"Received Render OAuth code: {code}, state: {state}")
+    
+    # Validate state parameter for security
+    if state and state in PENDING_OAUTH_STATES:
+        state_data = PENDING_OAUTH_STATES[state]
+        if state_data.get("type") == "render":
+            # Clean up old state
+            del PENDING_OAUTH_STATES[state]
+        else:
+            print("Warning: Invalid state type")
+            return JSONResponse({"error": "Invalid state parameter"}, status_code=400)
+    else:
+        print("Warning: Invalid or missing state parameter")
+        return JSONResponse({"error": "Invalid state parameter"}, status_code=400)
+    
+    # Render OAuth configuration
+    render_client_id = os.getenv("RENDER_CLIENT_ID", "your_render_client_id")
+    render_client_secret = os.getenv("RENDER_CLIENT_SECRET", "your_render_client_secret")
+    
+    if render_client_id == "your_render_client_id":
+        return JSONResponse({
+            "error": "Render OAuth not configured",
+            "message": "Please contact administrator to configure Render OAuth"
+        }, status_code=400)
+    
+    # Exchange code for access token
+    token_data = {
+        "client_id": render_client_id,
+        "client_secret": render_client_secret,
+        "code": code,
+        "grant_type": "authorization_code",
+        "redirect_uri": f"{BASE_URL}/api/auth/render/callback"
+    }
+    
+    try:
+        token_response = requests.post(
+            "https://render.com/oauth/token",
+            data=token_data,
+            headers={"Accept": "application/json"}
+        )
+        
+        if token_response.status_code != 200:
+            print(f"Token exchange failed: {token_response.text}")
+            return JSONResponse({"error": "Failed to exchange OAuth code"}, status_code=400)
+        
+        token_info = token_response.json()
+        access_token = token_info.get("access_token")
+        
+        if not access_token:
+            return JSONResponse({"error": "No access token received"}, status_code=400)
+        
+        # Get user info from Render API
+        user_response = requests.get(
+            "https://api.render.com/v1/user",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        
+        user_info = {}
+        if user_response.status_code == 200:
+            user_data = user_response.json()
+            user_info = {
+                "email": user_data.get("email"),
+                "name": user_data.get("name"),
+                "account_id": user_data.get("account_id")
+            }
+        
+        # Store access token and user info in session
+        request.session["render_api_key"] = access_token
+        request.session["render_verified"] = True
+        request.session["render_user_info"] = user_info
+        
+        print(f"Render OAuth successful for user: {user_info.get('email', 'unknown')}")
+        
+        # Redirect to frontend with success
+        redirect_url = f"{FRONTEND_URL}?render_auth=success"
+        return RedirectResponse(redirect_url, status_code=302)
+        
+    except Exception as e:
+        print(f"Render OAuth error: {e}")
+        return JSONResponse({"error": f"OAuth failed: {str(e)}"}, status_code=400)
 
 @app.post("/api/auth/render/verify")
 def verify_render_api_key(request: Request, api_key: str):

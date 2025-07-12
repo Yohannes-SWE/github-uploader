@@ -12,6 +12,17 @@ const RenderAuth = ({ onAuthComplete }) => {
 
   useEffect(() => {
     checkAuthStatus()
+
+    // Check if we're returning from Render OAuth callback
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get("render_auth") === "success") {
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname)
+      // Re-check auth status after a short delay
+      setTimeout(() => {
+        checkAuthStatus()
+      }, 500)
+    }
   }, [])
 
   const checkAuthStatus = async () => {
@@ -47,8 +58,15 @@ const RenderAuth = ({ onAuthComplete }) => {
 
       if (response.ok) {
         const data = await response.json()
-        setAuthData(data)
-        setAuthStep("instructions")
+
+        if (data.type === "oauth") {
+          // OAuth flow - redirect to Render
+          window.location.href = data.auth_url
+        } else {
+          // Manual API key flow (fallback)
+          setAuthData(data)
+          setAuthStep("instructions")
+        }
       } else {
         setStatus({
           type: "error",
@@ -172,6 +190,79 @@ const RenderAuth = ({ onAuthComplete }) => {
             <button onClick={handleLogout} className="btn btn-secondary">
               Disconnect Render
             </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (authStep === "manual") {
+    return (
+      <div className="render-auth-container">
+        <div className="auth-manual-card">
+          <div className="manual-header">
+            <h3>🔑 Manual Render API Key</h3>
+            <p>Enter your Render API key manually</p>
+          </div>
+
+          {status && (
+            <div className={`status-message ${status.type}`}>
+              {status.message}
+            </div>
+          )}
+
+          <form onSubmit={verifyApiKey} className="manual-form">
+            <div className="form-group">
+              <label htmlFor="apiKey">Render API Key:</label>
+              <input
+                type="password"
+                id="apiKey"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="rnd_..."
+                required
+              />
+              <small>
+                Found in your Render dashboard under Account → API Keys
+              </small>
+            </div>
+
+            <div className="form-actions">
+              <button
+                type="button"
+                onClick={() => setAuthStep("init")}
+                className="btn btn-secondary"
+              >
+                ← Back to OAuth
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={isLoading}
+              >
+                {isLoading ? "Verifying..." : "Verify API Key"}
+              </button>
+            </div>
+          </form>
+
+          <div className="manual-help">
+            <h4>How to get your API key:</h4>
+            <ol>
+              <li>
+                Go to{" "}
+                <a
+                  href="https://dashboard.render.com/account/api-keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Render Dashboard
+                </a>
+              </li>
+              <li>Click "Create API Key"</li>
+              <li>Give it a name like "GitHub Uploader"</li>
+              <li>Copy the generated key (starts with "rnd_")</li>
+              <li>Paste it above and click "Verify API Key"</li>
+            </ol>
           </div>
         </div>
       </div>
@@ -309,7 +400,7 @@ const RenderAuth = ({ onAuthComplete }) => {
           className="btn btn-primary btn-large"
           disabled={isLoading}
         >
-          {isLoading ? "Starting..." : "Connect Render Account"}
+          {isLoading ? "Connecting..." : "Connect with Render OAuth"}
         </button>
 
         <div className="auth-note">
@@ -324,6 +415,21 @@ const RenderAuth = ({ onAuthComplete }) => {
             </a>{" "}
             if you don't have one.
           </p>
+        </div>
+
+        <div className="auth-fallback">
+          <details>
+            <summary>Manual API Key Setup (Advanced)</summary>
+            <p>
+              If OAuth doesn't work, you can manually enter your Render API key:
+            </p>
+            <button
+              onClick={() => setAuthStep("manual")}
+              className="btn btn-secondary"
+            >
+              Use Manual API Key
+            </button>
+          </details>
         </div>
       </div>
     </div>
