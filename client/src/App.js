@@ -34,7 +34,7 @@ import {
   Deploy,
   Security,
   Speed,
-  Free
+  Star
 } from "@mui/icons-material"
 import RenderDeploy from "./components/RenderDeploy"
 import FileUpload from "./components/FileUpload"
@@ -165,7 +165,7 @@ function App() {
             </Grid>
             <Grid item xs={12} md={4}>
               <Card sx={{ height: "100%", textAlign: "center", p: 2 }}>
-                <Free sx={{ fontSize: 40, color: "#ff9800", mb: 1 }} />
+                <Star sx={{ fontSize: 40, color: "#ff9800", mb: 1 }} />
                 <Typography variant="h6" gutterBottom>
                   100% Free
                 </Typography>
