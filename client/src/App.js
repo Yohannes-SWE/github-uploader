@@ -39,6 +39,7 @@ import {
 import RenderDeploy from "./components/RenderDeploy"
 import FileUpload from "./components/FileUpload"
 import DeployWebsite from "./components/DeployWebsite"
+import AuthDebug from "./components/AuthDebug"
 import { API_URL } from "./config"
 
 // Step Panel component
@@ -105,6 +106,11 @@ function App() {
 
   const handleStepClick = (step) => {
     setCurrentStep(step)
+  }
+
+  // Show debug page if URL contains /debug
+  if (window.location.pathname === "/debug") {
+    return <AuthDebug />
   }
 
   if (checkingAuth) {
