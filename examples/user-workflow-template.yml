@@ -1,0 +1,59 @@
+# RepoTorpedo Deployment Workflow Template
+# Copy this file to .github/workflows/repotorpedo-deploy.yml in your repository
+
+name: Deploy with RepoTorpedo
+
+on:
+  push:
+    branches: [main, production]
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Add your project-specific tests here
+      - name: Run tests
+        run: |
+          echo "Add your test commands here"
+          # Examples:
+          # npm test
+          # python -m pytest
+          # go test ./...
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy with RepoTorpedo
+        env:
+          REPOTORPEDO_API_URL: "https://your-repotorpedo-instance.com"
+          REPOTORPEDO_TOKEN: ${{ secrets.REPOTORPEDO_TOKEN }}
+        run: |
+          curl -X POST "$REPOTORPEDO_API_URL/api/deploy" \
+            -H "Authorization: Bearer $REPOTORPEDO_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "repository": "${{ github.server_url }}/${{ github.repository }}",
+              "branch": "${{ github.ref_name }}",
+              "commit": "${{ github.sha }}",
+              "commit_message": "${{ github.event.head_commit.message }}",
+              "author": "${{ github.actor }}",
+              "trigger": "github_workflow"
+            }'
+
+      - name: Check deployment status
+        env:
+          REPOTORPEDO_API_URL: "https://your-repotorpedo-instance.com"
+          REPOTORPEDO_TOKEN: ${{ secrets.REPOTORPEDO_TOKEN }}
+        run: |
+          # Wait for deployment to complete (optional)
+          sleep 30
+          curl -X GET "$REPOTORPEDO_API_URL/api/deployment-status?commit=${{ github.sha }}" \
+            -H "Authorization: Bearer $REPOTORPEDO_TOKEN"

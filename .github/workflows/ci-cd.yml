@@ -65,7 +65,7 @@ jobs:
       - name: Lint frontend
         run: npm run lint
 
-  deploy-to-render:
+  trigger-deployment:
     needs: [test-backend, test-frontend]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -73,11 +73,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to Render
+      - name: Trigger RepoTorpedo Deployment
         env:
-          RENDER_TOKEN: ${{ secrets.RENDER_TOKEN }}
-          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+          REPOTORPEDO_API_URL: ${{ secrets.REPOTORPEDO_API_URL }}
+          REPOTORPEDO_TOKEN: ${{ secrets.REPOTORPEDO_TOKEN }}
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
-          curl -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
-            -H "Authorization: Bearer $RENDER_TOKEN" \
-            -H "Content-Type: application/json"
+          curl -X POST "$REPOTORPEDO_API_URL/api/deploy" \
+            -H "Authorization: Bearer $REPOTORPEDO_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "repository": "${{ env.REPOSITORY_URL }}",
+              "branch": "${{ github.ref_name }}",
+              "commit": "${{ github.sha }}",
+              "trigger": "github_workflow"
+            }'

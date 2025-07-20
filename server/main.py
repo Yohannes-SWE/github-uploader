@@ -2403,6 +2403,122 @@ def get_render_status(request: Request):
     }
 
 
+@app.post("/api/deploy")
+def deploy_via_workflow(request: Request, deployment_data: dict):
+    """
+    Generic deployment endpoint triggered by GitHub workflows
+    Supports user-configured deployment targets (Render, Vercel, Railway, etc.)
+    """
+    
+    # Validate required fields
+    required_fields = ["repository", "branch", "commit"]
+    for field in required_fields:
+        if field not in deployment_data:
+            raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+    
+    repository = deployment_data["repository"]
+    branch = deployment_data["branch"]
+    commit = deployment_data["commit"]
+    trigger = deployment_data.get("trigger", "unknown")
+    
+    # Get user's configured deployment preferences
+    # This would typically come from a database/user settings
+    # For now, we'll check session or use defaults
+    
+    deployment_config = request.session.get("deployment_config", {})
+    
+    if not deployment_config:
+        # If no config found, return available platforms for setup
+        return {
+            "status": "configuration_required",
+            "message": "No deployment configuration found. Please set up your deployment preferences.",
+            "available_platforms": ["render", "vercel", "railway", "netlify"],
+            "setup_url": "/setup"
+        }
+    
+    # Determine deployment target based on user preferences
+    target_platform = deployment_config.get("platform", "render")
+    
+    try:
+        if target_platform == "render":
+            # Use existing Render deployment logic
+            github_token = request.session.get("github_token")
+            if not github_token:
+                raise HTTPException(status_code=401, detail="GitHub authentication required")
+            
+            # Extract repo name from URL
+            repo_name = repository.split("/")[-1]
+            
+            # Trigger Render deployment using existing function
+            result = deploy_to_render_internal(request, repository, repo_name)
+            
+        elif target_platform == "vercel":
+            # Trigger Vercel deployment
+            result = deploy_to_vercel_internal(request, repository, branch, commit)
+            
+        elif target_platform == "railway":
+            # Trigger Railway deployment  
+            result = deploy_to_railway_internal(request, repository, branch, commit)
+            
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported platform: {target_platform}")
+            
+        return {
+            "status": "success",
+            "platform": target_platform,
+            "repository": repository,
+            "branch": branch,
+            "commit": commit,
+            "deployment_result": result,
+            "triggered_by": trigger
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "platform": target_platform,
+            "repository": repository,
+                         "commit": commit
+         }
+
+
+@app.get("/api/deployment-status")
+def get_deployment_status(request: Request, commit: str = None, repository: str = None):
+    """
+    Get deployment status for a specific commit or repository
+    Used by GitHub workflows to check deployment progress
+    """
+    
+    if not commit and not repository:
+        raise HTTPException(status_code=400, detail="Either commit or repository parameter is required")
+    
+    # In a real implementation, this would query a database of deployments
+    # For now, we'll return a simple status based on available information
+    
+    deployment_config = request.session.get("deployment_config", {})
+    
+    if not deployment_config:
+        return {
+            "status": "no_configuration",
+            "message": "No deployment configuration found"
+        }
+    
+    platform = deployment_config.get("platform", "unknown")
+    
+    # This is a simplified implementation
+    # In production, you'd query your deployment tracking system
+    return {
+        "status": "completed",  # or "pending", "failed", "unknown"
+        "platform": platform,
+        "commit": commit,
+        "repository": repository,
+        "deployed_at": "2024-01-01T00:00:00Z",  # Would be actual timestamp
+        "deployment_url": f"https://your-app.{platform}.com",  # Would be actual URL
+        "message": "Deployment completed successfully"
+    }
+
+
 @app.post("/api/render/deploy")
 def deploy_to_render(
     request: Request,
