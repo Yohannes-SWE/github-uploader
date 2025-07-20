@@ -26,6 +26,7 @@ class RenderServiceConfig:
     env_vars: Optional[Dict[str, str]] = None
     auto_deploy: bool = True
     branch: str = "main"
+    custom_domains: Optional[List[str]] = None
 
 
 class RenderDeployer:
@@ -72,6 +73,11 @@ class RenderDeployer:
             if config.env_vars:
                 self.set_environment_variables(service["id"], config.env_vars)
 
+            # Add custom domains if provided
+            if config.custom_domains:
+                for domain in config.custom_domains:
+                    self.add_custom_domain(service["id"], domain)
+
             return service
         else:
             raise Exception(f"Failed to create service: {response.text}")
@@ -87,6 +93,65 @@ class RenderDeployer:
 
             if response.status_code not in [200, 201]:
                 print(f"Warning: Failed to set env var {key}: {response.text}")
+
+    def add_custom_domain(self, service_id: str, domain: str) -> Dict[str, Any]:
+        """Add a custom domain to a service"""
+        response = requests.post(
+            f"{self.base_url}/services/{service_id}/custom-domains",
+            headers=self.headers,
+            json={"name": domain},
+        )
+
+        if response.status_code == 201:
+            return response.json()
+        else:
+            raise Exception(f"Failed to add custom domain {domain}: {response.text}")
+
+    def list_custom_domains(self, service_id: str) -> List[Dict[str, Any]]:
+        """List all custom domains for a service"""
+        response = requests.get(
+            f"{self.base_url}/services/{service_id}/custom-domains",
+            headers=self.headers,
+        )
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to list custom domains: {response.text}")
+
+    def remove_custom_domain(self, service_id: str, domain_id: str):
+        """Remove a custom domain from a service"""
+        response = requests.delete(
+            f"{self.base_url}/services/{service_id}/custom-domains/{domain_id}",
+            headers=self.headers,
+        )
+
+        if response.status_code != 204:
+            raise Exception(f"Failed to remove custom domain: {response.text}")
+
+    def get_custom_domain(self, service_id: str, domain_id: str) -> Dict[str, Any]:
+        """Get details of a specific custom domain"""
+        response = requests.get(
+            f"{self.base_url}/services/{service_id}/custom-domains/{domain_id}",
+            headers=self.headers,
+        )
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to get custom domain: {response.text}")
+
+    def verify_custom_domain(self, service_id: str, domain_id: str) -> Dict[str, Any]:
+        """Verify a custom domain (trigger DNS verification)"""
+        response = requests.post(
+            f"{self.base_url}/services/{service_id}/custom-domains/{domain_id}/verify",
+            headers=self.headers,
+        )
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to verify custom domain: {response.text}")
 
     def get_service(self, service_id: str) -> Dict[str, Any]:
         """Get service details"""
@@ -207,7 +272,7 @@ class UniversalRenderDeployer:
         return config
 
     def generate_backend_config(
-        self, app_type: str, project_name: str
+        self, app_type: str, project_name: str, custom_domains: Optional[List[str]] = None
     ) -> RenderServiceConfig:
         """Generate backend service configuration"""
 
@@ -220,6 +285,7 @@ class UniversalRenderDeployer:
                 start_command="uvicorn main:app --host 0.0.0.0 --port $PORT",
                 root_directory=".",
                 env_vars={"PYTHON_VERSION": "3.11.0", "ENVIRONMENT": "production"},
+                custom_domains=custom_domains,
             ),
             "node": RenderServiceConfig(
                 name=f"{project_name}-backend",
@@ -229,6 +295,7 @@ class UniversalRenderDeployer:
                 start_command="npm start",
                 root_directory=".",
                 env_vars={"NODE_ENV": "production", "PORT": "$PORT"},
+                custom_domains=custom_domains,
             ),
             "java": RenderServiceConfig(
                 name=f"{project_name}-backend",
@@ -238,6 +305,7 @@ class UniversalRenderDeployer:
                 start_command="java -jar build/libs/*.jar",
                 root_directory=".",
                 env_vars={"JAVA_VERSION": "17", "PORT": "$PORT"},
+                custom_domains=custom_domains,
             ),
             "go": RenderServiceConfig(
                 name=f"{project_name}-backend",
@@ -247,13 +315,14 @@ class UniversalRenderDeployer:
                 start_command="./main",
                 root_directory=".",
                 env_vars={"GO_VERSION": "1.21", "PORT": "$PORT"},
+                custom_domains=custom_domains,
             ),
         }
 
         return configs.get(app_type, configs["python"])
 
     def generate_frontend_config(
-        self, app_type: str, project_name: str
+        self, app_type: str, project_name: str, custom_domains: Optional[List[str]] = None
     ) -> RenderServiceConfig:
         """Generate frontend service configuration"""
 
@@ -266,6 +335,7 @@ class UniversalRenderDeployer:
                 static_publish_path="./build",
                 root_directory=".",
                 env_vars={"NODE_VERSION": "18"},
+                custom_domains=custom_domains,
             ),
             "vue": RenderServiceConfig(
                 name=f"{project_name}-frontend",
@@ -275,6 +345,7 @@ class UniversalRenderDeployer:
                 static_publish_path="./dist",
                 root_directory=".",
                 env_vars={"NODE_VERSION": "18"},
+                custom_domains=custom_domains,
             ),
             "angular": RenderServiceConfig(
                 name=f"{project_name}-frontend",
@@ -284,6 +355,7 @@ class UniversalRenderDeployer:
                 static_publish_path="./dist",
                 root_directory=".",
                 env_vars={"NODE_VERSION": "18"},
+                custom_domains=custom_domains,
             ),
             "next": RenderServiceConfig(
                 name=f"{project_name}-frontend",
@@ -293,6 +365,7 @@ class UniversalRenderDeployer:
                 start_command="npm start",
                 root_directory=".",
                 env_vars={"NODE_VERSION": "18", "PORT": "$PORT"},
+                custom_domains=custom_domains,
             ),
             "static": RenderServiceConfig(
                 name=f"{project_name}-frontend",
@@ -302,6 +375,7 @@ class UniversalRenderDeployer:
                 static_publish_path="./",
                 root_directory=".",
                 env_vars={},
+                custom_domains=custom_domains,
             ),
         }
 
@@ -313,6 +387,7 @@ class UniversalRenderDeployer:
         project_name: str,
         app_config: Dict[str, Any],
         custom_env_vars: Optional[Dict[str, str]] = None,
+        custom_domains: Optional[Dict[str, List[str]]] = None,
     ) -> Dict[str, Any]:
         """Deploy an application to Render"""
 
@@ -320,8 +395,9 @@ class UniversalRenderDeployer:
 
         # Deploy backend if present
         if app_config.get("backend"):
+            backend_domains = custom_domains.get("backend", []) if custom_domains else None
             backend_config = self.generate_backend_config(
-                app_config["backend"], project_name
+                app_config["backend"], project_name, backend_domains
             )
 
             # Add custom environment variables
@@ -345,8 +421,9 @@ class UniversalRenderDeployer:
 
         # Deploy frontend if present
         if app_config.get("frontend"):
+            frontend_domains = custom_domains.get("frontend", []) if custom_domains else None
             frontend_config = self.generate_frontend_config(
-                app_config["frontend"], project_name
+                app_config["frontend"], project_name, frontend_domains
             )
 
             # Add custom environment variables
@@ -385,6 +462,7 @@ class UniversalRenderDeployer:
         github_repo: str,
         project_name: Optional[str] = None,
         custom_env_vars: Optional[Dict[str, str]] = None,
+        custom_domains: Optional[Dict[str, List[str]]] = None,
     ) -> Dict[str, Any]:
         """Deploy directly from a GitHub repository"""
 
@@ -400,4 +478,21 @@ class UniversalRenderDeployer:
             project_name,
             app_config,
             custom_env_vars,
+            custom_domains,
         )
+
+    def add_domain_to_service(self, service_id: str, domain: str) -> Dict[str, Any]:
+        """Add a custom domain to an existing service"""
+        return self.render.add_custom_domain(service_id, domain)
+
+    def list_service_domains(self, service_id: str) -> List[Dict[str, Any]]:
+        """List all custom domains for a service"""
+        return self.render.list_custom_domains(service_id)
+
+    def remove_domain_from_service(self, service_id: str, domain_id: str):
+        """Remove a custom domain from a service"""
+        return self.render.remove_custom_domain(service_id, domain_id)
+
+    def verify_service_domain(self, service_id: str, domain_id: str) -> Dict[str, Any]:
+        """Verify a custom domain for a service"""
+        return self.render.verify_custom_domain(service_id, domain_id)

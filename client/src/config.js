@@ -36,7 +36,8 @@ console.log("Environment detection:", {
 export const currentConfig = config[environment]
 
 // Export API URL for easy access - always use production URL
-const API_URL = process.env.REACT_APP_API_URL || "https://api.repotorpedo.com"
+export const API_URL =
+  process.env.REACT_APP_API_URL || "https://api.repotorpedo.com"
 
 // Debug logging
 console.log("API URL resolved:", API_URL)

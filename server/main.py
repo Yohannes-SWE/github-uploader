@@ -2409,6 +2409,7 @@ def deploy_to_render(
     github_repo: str,
     project_name: str = None,
     custom_env_vars: dict = None,
+    custom_domains: dict = None,
 ):
     """Deploy any application to Render using user's API key"""
 
@@ -2442,6 +2443,7 @@ def deploy_to_render(
             github_repo=github_repo,
             project_name=project_name,
             custom_env_vars=custom_env_vars,
+            custom_domains=custom_domains,
         )
 
         # Store deployment info in session for user to track
@@ -2666,6 +2668,539 @@ def get_user_deployments(request: Request):
     user_deployments = request.session.get("user_deployments", [])
 
     return {"status": "success", "deployments": user_deployments}
+
+
+# --- Custom Domain Management Endpoints ---
+
+
+# --- Domain Provider Integration Endpoints ---
+
+
+@app.post("/api/domain-providers/connect")
+def connect_domain_provider(
+    request: Request,
+    provider: str,
+    api_key: str,
+    api_secret: str = None
+):
+    """Connect a domain provider account"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    try:
+        from domain_providers import create_provider, DomainManager
+        
+        # Create provider instance
+        provider_instance = create_provider(provider, api_key, api_secret)
+        
+        # Test the connection by listing domains
+        domains = provider_instance.list_domains()
+        
+        # Store provider credentials in session (encrypted in production)
+        user_providers = request.session.get("domain_providers", {})
+        user_providers[provider] = {
+            "api_key": api_key,
+            "api_secret": api_secret,
+            "verified": True,
+            "domains_count": len(domains)
+        }
+        request.session["domain_providers"] = user_providers
+        
+        return {
+            "status": "success",
+            "message": f"{provider.capitalize()} account connected successfully",
+            "provider": provider,
+            "domains_count": len(domains),
+            "domains": domains[:5]  # Return first 5 domains
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to connect {provider} account: {str(e)}"
+        )
+
+
+@app.get("/api/domain-providers/status")
+def get_domain_providers_status(request: Request):
+    """Get status of connected domain providers"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    user_providers = request.session.get("domain_providers", {})
+    
+    return {
+        "status": "success",
+        "providers": user_providers,
+        "connected_count": len([p for p in user_providers.values() if p.get("verified")])
+    }
+
+
+@app.get("/api/domain-providers/{provider}/domains")
+def list_provider_domains(request: Request, provider: str):
+    """List domains for a specific provider"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Get provider credentials from session
+    user_providers = request.session.get("domain_providers", {})
+    if provider not in user_providers:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{provider.capitalize()} account not connected"
+        )
+    
+    provider_config = user_providers[provider]
+    
+    try:
+        from domain_providers import create_provider
+        
+        provider_instance = create_provider(
+            provider,
+            provider_config["api_key"],
+            provider_config["api_secret"]
+        )
+        
+        domains = provider_instance.list_domains()
+        
+        return {
+            "status": "success",
+            "provider": provider,
+            "domains": domains
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to list domains: {str(e)}"
+        )
+
+
+@app.get("/api/domain-providers/{provider}/domains/{domain}/records")
+def get_domain_records(request: Request, provider: str, domain: str):
+    """Get DNS records for a specific domain"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Get provider credentials from session
+    user_providers = request.session.get("domain_providers", {})
+    if provider not in user_providers:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{provider.capitalize()} account not connected"
+        )
+    
+    provider_config = user_providers[provider]
+    
+    try:
+        from domain_providers import create_provider
+        
+        provider_instance = create_provider(
+            provider,
+            provider_config["api_key"],
+            provider_config["api_secret"]
+        )
+        
+        records = provider_instance.list_dns_records(domain)
+        
+        return {
+            "status": "success",
+            "provider": provider,
+            "domain": domain,
+            "records": [record.__dict__ for record in records]
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get DNS records: {str(e)}"
+        )
+
+
+@app.post("/api/domain-providers/{provider}/domains/{domain}/setup-render")
+def setup_render_domain(
+    request: Request,
+    provider: str,
+    domain: str,
+    render_service_url: str
+):
+    """Set up DNS records for Render deployment"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Get provider credentials from session
+    user_providers = request.session.get("domain_providers", {})
+    if provider not in user_providers:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{provider.capitalize()} account not connected"
+        )
+    
+    provider_config = user_providers[provider]
+    
+    try:
+        from domain_providers import create_provider, DomainManager
+        
+        provider_instance = create_provider(
+            provider,
+            provider_config["api_key"],
+            provider_config["api_secret"]
+        )
+        
+        domain_manager = DomainManager()
+        domain_manager.register_provider(provider, provider_instance)
+        
+        result = domain_manager.setup_render_domains(
+            provider, domain, render_service_url
+        )
+        
+        return {
+            "status": "success",
+            "message": f"DNS records configured for {domain}",
+            "result": result
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to set up DNS records: {str(e)}"
+        )
+
+
+@app.post("/api/domain-providers/{provider}/setup-fullstack")
+def setup_fullstack_domains(
+    request: Request,
+    provider: str,
+    frontend_domain: str,
+    backend_domain: str,
+    frontend_url: str,
+    backend_url: str
+):
+    """Set up DNS records for full-stack application"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Get provider credentials from session
+    user_providers = request.session.get("domain_providers", {})
+    if provider not in user_providers:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{provider.capitalize()} account not connected"
+        )
+    
+    provider_config = user_providers[provider]
+    
+    try:
+        from domain_providers import create_provider, DomainManager
+        
+        provider_instance = create_provider(
+            provider,
+            provider_config["api_key"],
+            provider_config["api_secret"]
+        )
+        
+        domain_manager = DomainManager()
+        domain_manager.register_provider(provider, provider_instance)
+        
+        result = domain_manager.setup_fullstack_domains(
+            provider, frontend_domain, backend_domain, frontend_url, backend_url
+        )
+        
+        return {
+            "status": "success",
+            "message": "DNS records configured for full-stack application",
+            "result": result
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to set up DNS records: {str(e)}"
+        )
+
+
+@app.post("/api/domain-providers/{provider}/domains/{domain}/verify-propagation")
+def verify_dns_propagation(
+    request: Request,
+    provider: str,
+    domain: str,
+    expected_value: str,
+    record_type: str = "CNAME"
+):
+    """Verify DNS propagation for a domain"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    try:
+        from domain_providers import DomainManager
+        
+        domain_manager = DomainManager()
+        
+        # Try multiple times with delays for propagation
+        for attempt in range(5):
+            if domain_manager.verify_dns_propagation(domain, expected_value, record_type):
+                return {
+                    "status": "success",
+                    "message": f"DNS propagation verified for {domain}",
+                    "attempts": attempt + 1
+                }
+            
+            time.sleep(30)  # Wait 30 seconds between attempts
+        
+        return {
+            "status": "pending",
+            "message": f"DNS propagation not yet complete for {domain}",
+            "attempts": 5
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to verify DNS propagation: {str(e)}"
+        )
+
+
+@app.post("/api/domain-providers/disconnect/{provider}")
+def disconnect_domain_provider(request: Request, provider: str):
+    """Disconnect a domain provider account"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    # Remove provider from session
+    user_providers = request.session.get("domain_providers", {})
+    if provider in user_providers:
+        del user_providers[provider]
+        request.session["domain_providers"] = user_providers
+    
+    return {
+        "status": "success",
+        "message": f"{provider.capitalize()} account disconnected"
+    }
+
+
+@app.get("/api/domain-providers/supported")
+def get_supported_providers(request: Request):
+    """Get list of supported domain providers"""
+    
+    return {
+        "status": "success",
+        "providers": [
+            {
+                "name": "godaddy",
+                "display_name": "GoDaddy",
+                "api_docs": "https://developer.godaddy.com/doc/endpoint/domains",
+                "features": ["DNS Management", "Domain Registration", "SSL Certificates"]
+            },
+            {
+                "name": "namecheap",
+                "display_name": "Namecheap",
+                "api_docs": "https://www.namecheap.com/support/api/",
+                "features": ["DNS Management", "Domain Registration", "WHOIS Privacy"]
+            },
+            {
+                "name": "cloudflare",
+                "display_name": "Cloudflare",
+                "api_docs": "https://developers.cloudflare.com/api/",
+                "features": ["DNS Management", "CDN", "SSL Certificates", "DDoS Protection"]
+            },
+            {
+                "name": "squarespace",
+                "display_name": "Squarespace",
+                "api_docs": "https://developers.squarespace.com/",
+                "features": ["DNS Management", "Website Builder", "E-commerce"]
+            }
+        ]
+    }
+
+
+@app.get("/api/render/services/{service_id}/domains")
+def list_service_domains(request: Request, service_id: str):
+    """List all custom domains for a Render service"""
+
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+
+    # Get user's Render API key from session
+    render_api_key = request.session.get("render_api_key")
+    if not render_api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Render API key not configured. Please set up your Render credentials first.",
+        )
+
+    try:
+        from render_deployer import RenderDeployer
+
+        deployer = RenderDeployer(render_api_key)
+        domains = deployer.list_custom_domains(service_id)
+
+        return {"status": "success", "domains": domains}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list domains: {str(e)}"
+        )
+
+
+@app.post("/api/render/services/{service_id}/domains")
+def add_service_domain(request: Request, service_id: str, domain: str):
+    """Add a custom domain to a Render service"""
+
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+
+    # Get user's Render API key from session
+    render_api_key = request.session.get("render_api_key")
+    if not render_api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Render API key not configured. Please set up your Render credentials first.",
+        )
+
+    try:
+        from render_deployer import RenderDeployer
+
+        deployer = RenderDeployer(render_api_key)
+        result = deployer.add_custom_domain(service_id, domain)
+
+        return {
+            "status": "success",
+            "message": f"Domain {domain} added successfully",
+            "domain": result,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to add domain: {str(e)}"
+        )
+
+
+@app.delete("/api/render/services/{service_id}/domains/{domain_id}")
+def remove_service_domain(request: Request, service_id: str, domain_id: str):
+    """Remove a custom domain from a Render service"""
+
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+
+    # Get user's Render API key from session
+    render_api_key = request.session.get("render_api_key")
+    if not render_api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Render API key not configured. Please set up your Render credentials first.",
+        )
+
+    try:
+        from render_deployer import RenderDeployer
+
+        deployer = RenderDeployer(render_api_key)
+        deployer.remove_custom_domain(service_id, domain_id)
+
+        return {
+            "status": "success",
+            "message": "Domain removed successfully",
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to remove domain: {str(e)}"
+        )
+
+
+@app.get("/api/render/services/{service_id}/domains/{domain_id}")
+def get_service_domain(request: Request, service_id: str, domain_id: str):
+    """Get details of a specific custom domain"""
+
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+
+    # Get user's Render API key from session
+    render_api_key = request.session.get("render_api_key")
+    if not render_api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Render API key not configured. Please set up your Render credentials first.",
+        )
+
+    try:
+        from render_deployer import RenderDeployer
+
+        deployer = RenderDeployer(render_api_key)
+        domain = deployer.get_custom_domain(service_id, domain_id)
+
+        return {"status": "success", "domain": domain}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get domain: {str(e)}"
+        )
+
+
+@app.post("/api/render/services/{service_id}/domains/{domain_id}/verify")
+def verify_service_domain(request: Request, service_id: str, domain_id: str):
+    """Verify a custom domain (trigger DNS verification)"""
+
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+
+    # Get user's Render API key from session
+    render_api_key = request.session.get("render_api_key")
+    if not render_api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Render API key not configured. Please set up your Render credentials first.",
+        )
+
+    try:
+        from render_deployer import RenderDeployer
+
+        deployer = RenderDeployer(render_api_key)
+        result = deployer.verify_custom_domain(service_id, domain_id)
+
+        return {
+            "status": "success",
+            "message": "Domain verification triggered",
+            "verification": result,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to verify domain: {str(e)}"
+        )
 
 
 @app.post("/api/render/analyze")
