@@ -1,0 +1,51 @@
+name: User Flow Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, "3.10", "3.11"]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        cd tests
+        python setup_tests.py --install-deps
+    
+    - name: Start mock server
+      run: |
+        cd tests
+        python mock_server.py --host 0.0.0.0 --port 5000 &
+        sleep 5
+    
+    - name: Run tests
+      run: |
+        cd tests
+        python run_tests.py --base-url http://localhost:5000 --full --coverage --report
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: |
+          tests/test_report.html
+          tests/htmlcov/
+          tests/.coverage

@@ -1,0 +1,104 @@
+{
+  "test_environment": {
+    "base_url": "http://localhost:5000",
+    "mock_server_port": 5000,
+    "timeout": 30,
+    "retry_attempts": 3
+  },
+  "providers": {
+    "render": {
+      "api_key": "test_render_api_key_123",
+      "config": {}
+    },
+    "vercel": {
+      "api_key": "test_vercel_api_key_123",
+      "config": {
+        "team_id": "test_team_id"
+      }
+    },
+    "netlify": {
+      "api_key": "test_netlify_api_key_123",
+      "config": {}
+    },
+    "railway": {
+      "api_key": "test_railway_api_key_123",
+      "config": {}
+    }
+  },
+  "test_data": {
+    "users": [
+      {
+        "email": "testuser1@example.com",
+        "password": "TestPassword123!",
+        "name": "Test User 1"
+      },
+      {
+        "email": "testuser2@example.com",
+        "password": "TestPassword456!",
+        "name": "Test User 2"
+      }
+    ],
+    "repositories": [
+      {
+        "url": "https://github.com/testuser/simple-react-app",
+        "type": "react",
+        "framework": "create-react-app"
+      },
+      {
+        "url": "https://github.com/testuser/node-api",
+        "type": "node",
+        "framework": "express"
+      },
+      {
+        "url": "https://github.com/testuser/python-flask-app",
+        "type": "python",
+        "framework": "flask"
+      },
+      {
+        "url": "https://github.com/testuser/static-site",
+        "type": "static",
+        "framework": "html"
+      }
+    ],
+    "deployments": [
+      {
+        "name": "test-app-1",
+        "environment": "node",
+        "build_command": "npm install && npm run build",
+        "start_command": "npm start",
+        "env_vars": {
+          "NODE_ENV": "production",
+          "PORT": "3000"
+        }
+      },
+      {
+        "name": "test-app-2",
+        "environment": "python",
+        "build_command": "pip install -r requirements.txt",
+        "start_command": "python app.py",
+        "env_vars": {
+          "FLASK_ENV": "production",
+          "PORT": "5000"
+        }
+      }
+    ]
+  },
+  "test_scenarios": {
+    "quick_tests": [
+      "AuthenticationFlowTests",
+      "ProviderConfigurationFlowTests",
+      "DeploymentFlowTests"
+    ],
+    "full_tests": [
+      "AuthenticationFlowTests",
+      "ProviderConfigurationFlowTests",
+      "DeploymentFlowTests",
+      "DeploymentStatusFlowTests",
+      "CustomDomainFlowTests",
+      "ErrorHandlingFlowTests",
+      "PerformanceFlowTests",
+      "SecurityFlowTests",
+      "IntegrationFlowTests"
+    ]
+  }
+}

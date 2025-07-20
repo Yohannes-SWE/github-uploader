@@ -12,17 +12,6 @@ const RenderAuth = ({ onAuthComplete }) => {
 
   useEffect(() => {
     checkAuthStatus()
-
-    // Check if we're returning from Render OAuth callback
-    const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get("render_auth") === "success") {
-      // Clear the URL parameter
-      window.history.replaceState({}, document.title, window.location.pathname)
-      // Re-check auth status after a short delay
-      setTimeout(() => {
-        checkAuthStatus()
-      }, 500)
-    }
   }, [])
 
   const checkAuthStatus = async () => {
@@ -59,14 +48,9 @@ const RenderAuth = ({ onAuthComplete }) => {
       if (response.ok) {
         const data = await response.json()
 
-        if (data.type === "oauth") {
-          // OAuth flow - redirect to Render
-          window.location.href = data.auth_url
-        } else {
-          // Manual API key flow (fallback)
-          setAuthData(data)
-          setAuthStep("instructions")
-        }
+        // Render uses API key authentication (not OAuth)
+        setAuthData(data)
+        setAuthStep("instructions")
       } else {
         setStatus({
           type: "error",

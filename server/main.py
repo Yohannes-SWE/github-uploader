@@ -2762,19 +2762,33 @@ def list_provider_domains(request: Request, provider: str):
     provider_config = user_providers[provider]
     
     try:
-        from domain_providers import create_provider
+        if provider_config.get("auth_method") == "oauth":
+            # Use OAuth token
+            from domain_providers_oauth import DomainProviderOAuthManager
+            
+            oauth_manager = DomainProviderOAuthManager(BASE_URL)
+            oauth_provider = oauth_manager.oauth_providers[provider]
+            
+            # Create domain provider with OAuth token
+            domain_provider = oauth_provider.create_domain_provider(
+                provider_config["access_token"]
+            )
+        else:
+            # Use API key (backward compatibility)
+            from domain_providers import create_provider
+            
+            domain_provider = create_provider(
+                provider,
+                provider_config["api_key"],
+                provider_config["api_secret"]
+            )
         
-        provider_instance = create_provider(
-            provider,
-            provider_config["api_key"],
-            provider_config["api_secret"]
-        )
-        
-        domains = provider_instance.list_domains()
+        domains = domain_provider.list_domains()
         
         return {
             "status": "success",
             "provider": provider,
+            "auth_method": provider_config.get("auth_method", "api_key"),
             "domains": domains
         }
         
@@ -3006,35 +3020,251 @@ def disconnect_domain_provider(request: Request, provider: str):
 def get_supported_providers(request: Request):
     """Get list of supported domain providers"""
     
-    return {
-        "status": "success",
-        "providers": [
+    try:
+        from domain_providers_oauth import DomainProviderOAuthManager
+        
+        oauth_manager = DomainProviderOAuthManager(BASE_URL)
+        oauth_providers = oauth_manager.get_supported_providers()
+        
+        # Combine OAuth and manual API providers
+        all_providers = []
+        
+        # Add OAuth-enabled providers
+        for provider in oauth_providers:
+            all_providers.append({
+                "name": provider["name"],
+                "display_name": provider["display_name"],
+                "auth_method": "oauth",
+                "configured": provider["configured"],
+                "scopes": provider["scopes"],
+                "features": get_provider_features(provider["name"])
+            })
+        
+        # Add manual API providers (for backward compatibility)
+        manual_providers = [
             {
                 "name": "godaddy",
                 "display_name": "GoDaddy",
+                "auth_method": "api_key",
+                "configured": True,
                 "api_docs": "https://developer.godaddy.com/doc/endpoint/domains",
                 "features": ["DNS Management", "Domain Registration", "SSL Certificates"]
             },
             {
                 "name": "namecheap",
                 "display_name": "Namecheap",
+                "auth_method": "api_key",
+                "configured": True,
                 "api_docs": "https://www.namecheap.com/support/api/",
                 "features": ["DNS Management", "Domain Registration", "WHOIS Privacy"]
             },
             {
                 "name": "cloudflare",
                 "display_name": "Cloudflare",
+                "auth_method": "api_key",
+                "configured": True,
                 "api_docs": "https://developers.cloudflare.com/api/",
                 "features": ["DNS Management", "CDN", "SSL Certificates", "DDoS Protection"]
             },
             {
                 "name": "squarespace",
                 "display_name": "Squarespace",
+                "auth_method": "api_key",
+                "configured": True,
                 "api_docs": "https://developers.squarespace.com/",
                 "features": ["DNS Management", "Website Builder", "E-commerce"]
             }
         ]
+        
+        # Merge providers, preferring OAuth over manual API
+        provider_map = {}
+        for provider in manual_providers:
+            provider_map[provider["name"]] = provider
+        
+        for provider in oauth_providers:
+            provider_map[provider["name"]] = {
+                "name": provider["name"],
+                "display_name": provider["display_name"],
+                "auth_method": "oauth",
+                "configured": provider["configured"],
+                "scopes": provider["scopes"],
+                "features": get_provider_features(provider["name"])
+            }
+        
+        return {
+            "status": "success",
+            "providers": list(provider_map.values())
+        }
+        
+    except Exception as e:
+        # Fallback to manual providers if OAuth is not configured
+        return {
+            "status": "success",
+            "providers": [
+                {
+                    "name": "godaddy",
+                    "display_name": "GoDaddy",
+                    "auth_method": "api_key",
+                    "configured": True,
+                    "api_docs": "https://developer.godaddy.com/doc/endpoint/domains",
+                    "features": ["DNS Management", "Domain Registration", "SSL Certificates"]
+                },
+                {
+                    "name": "namecheap",
+                    "display_name": "Namecheap",
+                    "auth_method": "api_key",
+                    "configured": True,
+                    "api_docs": "https://www.namecheap.com/support/api/",
+                    "features": ["DNS Management", "Domain Registration", "WHOIS Privacy"]
+                },
+                {
+                    "name": "cloudflare",
+                    "display_name": "Cloudflare",
+                    "auth_method": "api_key",
+                    "configured": True,
+                    "api_docs": "https://developers.cloudflare.com/api/",
+                    "features": ["DNS Management", "CDN", "SSL Certificates", "DDoS Protection"]
+                },
+                {
+                    "name": "squarespace",
+                    "display_name": "Squarespace",
+                    "auth_method": "api_key",
+                    "configured": True,
+                    "api_docs": "https://developers.squarespace.com/",
+                    "features": ["DNS Management", "Website Builder", "E-commerce"]
+                }
+            ]
+        }
+
+
+def get_provider_features(provider_name: str) -> List[str]:
+    """Get features for a specific provider"""
+    features_map = {
+        "godaddy": ["DNS Management", "Domain Registration", "SSL Certificates", "OAuth Support"],
+        "namecheap": ["DNS Management", "Domain Registration", "WHOIS Privacy", "OAuth Support"],
+        "cloudflare": ["DNS Management", "CDN", "SSL Certificates", "DDoS Protection", "OAuth Support"],
+        "squarespace": ["DNS Management", "Website Builder", "E-commerce", "OAuth Support"]
     }
+    return features_map.get(provider_name, ["DNS Management"])
+
+
+# --- Domain Provider OAuth Endpoints ---
+
+
+@app.get("/api/domain-providers/oauth/login/{provider}")
+def domain_provider_oauth_login(request: Request, provider: str):
+    """Initiate OAuth login for a domain provider"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    try:
+        from domain_providers_oauth import DomainProviderOAuthManager
+        
+        oauth_manager = DomainProviderOAuthManager(BASE_URL)
+        
+        if not oauth_manager.is_provider_configured(provider):
+            raise HTTPException(
+                status_code=400,
+                detail=f"OAuth not configured for {provider}. Please use API key authentication instead."
+            )
+        
+        # Get OAuth URL
+        oauth_data = oauth_manager.get_oauth_url(provider)
+        
+        return {
+            "auth_url": oauth_data["auth_url"],
+            "state": oauth_data["state"],
+            "provider": provider
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to initiate OAuth for {provider}: {str(e)}"
+        )
+
+
+@app.get("/api/domain-providers/oauth/callback/{provider}")
+def domain_provider_oauth_callback(
+    request: Request,
+    provider: str,
+    code: str,
+    state: str = None
+):
+    """Handle OAuth callback from domain provider"""
+    
+    # Check if user is authenticated with GitHub
+    github_token = request.session.get("github_token")
+    if not github_token:
+        raise HTTPException(status_code=401, detail="GitHub authentication required")
+    
+    try:
+        from domain_providers_oauth import DomainProviderOAuthManager
+        
+        oauth_manager = DomainProviderOAuthManager(BASE_URL)
+        
+        # Handle OAuth callback
+        oauth_result = oauth_manager.handle_oauth_callback(provider, code, state)
+        
+        # Store provider credentials in session
+        user_providers = request.session.get("domain_providers", {})
+        user_providers[provider] = {
+            "auth_method": "oauth",
+            "access_token": oauth_result["access_token"],
+            "refresh_token": oauth_result.get("refresh_token"),
+            "expires_in": oauth_result.get("expires_in"),
+            "user_info": oauth_result["user_info"],
+            "verified": True,
+            "connected_at": time.time()
+        }
+        request.session["domain_providers"] = user_providers
+        
+        # Test the connection by listing domains
+        domain_provider = oauth_result["domain_provider"]
+        domains = domain_provider.list_domains()
+        
+        return {
+            "status": "success",
+            "message": f"{provider.capitalize()} account connected successfully via OAuth",
+            "provider": provider,
+            "auth_method": "oauth",
+            "user_info": oauth_result["user_info"],
+            "domains_count": len(domains),
+            "domains": domains[:5]  # Return first 5 domains
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"OAuth callback failed for {provider}: {str(e)}"
+        )
+
+
+@app.get("/api/domain-providers/oauth/status")
+def get_oauth_status(request: Request):
+    """Get OAuth configuration status for domain providers"""
+    
+    try:
+        from domain_providers_oauth import DomainProviderOAuthManager
+        
+        oauth_manager = DomainProviderOAuthManager(BASE_URL)
+        oauth_providers = oauth_manager.get_supported_providers()
+        
+        return {
+            "status": "success",
+            "oauth_configured": len(oauth_providers) > 0,
+            "providers": oauth_providers
+        }
+        
+    except Exception as e:
+        return {
+            "status": "success",
+            "oauth_configured": False,
+            "providers": []
+        }
 
 
 @app.get("/api/render/services/{service_id}/domains")
@@ -3285,135 +3515,35 @@ def clear_render_credentials(request: Request):
     return {"status": "success", "message": "Render credentials cleared from session"}
 
 
-# --- Render OAuth Authentication Endpoints ---
+# --- Render API Key Authentication Endpoints ---
 
 
 @app.get("/api/auth/render/login")
 def render_login(request: Request):
-    """Initiate Render OAuth authentication flow"""
+    """Initiate Render API key authentication flow (OAuth-like experience)"""
     # Check if user is authenticated with GitHub
     github_token = request.session.get("github_token")
     if not github_token:
         raise HTTPException(status_code=401, detail="GitHub authentication required")
 
-    # Generate secure state for OAuth flow
-    state = generate_oauth_state()
-    PENDING_OAUTH_STATES[state] = {
-        "timestamp": time.time(),
-        "user_agent": request.headers.get("user-agent", ""),
-        "ip": request.client.host if request.client else "unknown",
-        "type": "render",
+    # Return instructions for API key setup
+    return {
+        "type": "api_key",
+        "auth_url": "https://dashboard.render.com/account/api-keys",
+        "instructions": {
+            "title": "Connect Your Render Account",
+            "description": "Get your Render API key to enable automatic deployments",
+            "steps": [
+                "Go to your Render dashboard",
+                "Navigate to Account → API Keys",
+                "Click 'Create API Key'",
+                "Give it a name like 'GitHub Uploader'",
+                "Copy the generated key (starts with 'rnd_')",
+                "Paste it below and click 'Connect'"
+            ],
+            "help_text": "Your API key is stored securely in your session and used only for deployments."
+        }
     }
-
-    # Render OAuth configuration
-    render_client_id = os.getenv("RENDER_CLIENT_ID", "your_render_client_id")
-    render_redirect_uri = f"{BASE_URL}/api/auth/render/callback"
-
-    # Build OAuth URL
-    oauth_params = {
-        "client_id": render_client_id,
-        "redirect_uri": render_redirect_uri,
-        "response_type": "code",
-        "scope": "read:user read:email deploy",
-        "state": state,
-    }
-
-    oauth_url = "https://render.com/oauth/authorize"
-    url = requests.Request("GET", oauth_url, params=oauth_params).prepare().url
-
-    return {"auth_url": url, "state": state, "type": "oauth"}
-
-
-@app.get("/api/auth/render/callback")
-def render_callback(request: Request, code: str, state: str = None):
-    """Handle Render OAuth callback"""
-    print(f"Received Render OAuth code: {code}, state: {state}")
-
-    # Validate state parameter for security
-    if state and state in PENDING_OAUTH_STATES:
-        state_data = PENDING_OAUTH_STATES[state]
-        if state_data.get("type") == "render":
-            # Clean up old state
-            del PENDING_OAUTH_STATES[state]
-        else:
-            print("Warning: Invalid state type")
-            return JSONResponse({"error": "Invalid state parameter"}, status_code=400)
-    else:
-        print("Warning: Invalid or missing state parameter")
-        return JSONResponse({"error": "Invalid state parameter"}, status_code=400)
-
-    # Render OAuth configuration
-    render_client_id = os.getenv("RENDER_CLIENT_ID", "your_render_client_id")
-    render_client_secret = os.getenv(
-        "RENDER_CLIENT_SECRET", "your_render_client_secret"
-    )
-
-    if render_client_id == "your_render_client_id":
-        return JSONResponse(
-            {
-                "error": "Render OAuth not configured",
-                "message": "Please contact administrator to configure Render OAuth",
-            },
-            status_code=400,
-        )
-
-    # Exchange code for access token
-    token_data = {
-        "client_id": render_client_id,
-        "client_secret": render_client_secret,
-        "code": code,
-        "grant_type": "authorization_code",
-        "redirect_uri": f"{BASE_URL}/api/auth/render/callback",
-    }
-
-    try:
-        token_response = requests.post(
-            "https://render.com/oauth/token",
-            data=token_data,
-            headers={"Accept": "application/json"},
-        )
-
-        if token_response.status_code != 200:
-            print(f"Token exchange failed: {token_response.text}")
-            return JSONResponse(
-                {"error": "Failed to exchange OAuth code"}, status_code=400
-            )
-
-        token_info = token_response.json()
-        access_token = token_info.get("access_token")
-
-        if not access_token:
-            return JSONResponse({"error": "No access token received"}, status_code=400)
-
-        # Get user info from Render API
-        user_response = requests.get(
-            "https://api.render.com/v1/user",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-
-        user_info = {}
-        if user_response.status_code == 200:
-            user_data = user_response.json()
-            user_info = {
-                "email": user_data.get("email"),
-                "name": user_data.get("name"),
-                "account_id": user_data.get("account_id"),
-            }
-
-        # Store access token and user info in session
-        request.session["render_api_key"] = access_token
-        request.session["render_verified"] = True
-        request.session["render_user_info"] = user_info
-
-        print(f"Render OAuth successful for user: {user_info.get('email', 'unknown')}")
-
-        # Redirect to frontend with success
-        redirect_url = f"{FRONTEND_URL}?render_auth=success"
-        return RedirectResponse(redirect_url, status_code=302)
-
-    except Exception as e:
-        print(f"Render OAuth error: {e}")
-        return JSONResponse({"error": f"OAuth failed: {str(e)}"}, status_code=400)
 
 
 @app.post("/api/auth/render/verify")

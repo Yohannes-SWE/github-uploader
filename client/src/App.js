@@ -171,52 +171,7 @@ function App() {
 
   if (!isAuthenticated) {
     if (showLanding) {
-      return (
-        <>
-          <LandingPage onGetStarted={() => setShowLanding(false)} />
-          <Button
-            variant="text"
-            color="primary"
-            sx={{ mt: 2 }}
-            onClick={() => setHelpOpen(true)}
-          >
-            Help / FAQ
-          </Button>
-          <Dialog open={helpOpen} onClose={() => setHelpOpen(false)}>
-            <DialogTitle>Help & FAQ</DialogTitle>
-            <DialogContent dividers>
-              <Typography variant="h6" gutterBottom>
-                What is Render?
-              </Typography>
-              <Typography variant="body2" gutterBottom>
-                Render is a modern cloud platform that lets you deploy websites
-                and apps easily, with free hosting for static sites.
-              </Typography>
-              <Typography variant="h6" gutterBottom>
-                Is my data safe?
-              </Typography>
-              <Typography variant="body2" gutterBottom>
-                Yes! Your credentials are never shared, and all deployments use
-                secure OAuth authentication. Files are only used for your
-                deployment.
-              </Typography>
-              <Typography variant="h6" gutterBottom>
-                How do I get support?
-              </Typography>
-              <Typography variant="body2">
-                Email{" "}
-                <a href="mailto:support@repotorpedo.com">
-                  support@repotorpedo.com
-                </a>{" "}
-                or use the feedback form in the app.
-              </Typography>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setHelpOpen(false)}>Close</Button>
-            </DialogActions>
-          </Dialog>
-        </>
-      )
+      return <LandingPage onGetStarted={() => setShowLanding(false)} />
     }
     // Onboarding wizard for unauthenticated users
     return (
