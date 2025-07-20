@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import {
   Box,
   Typography,
@@ -23,12 +23,29 @@ import {
   Link,
   ContentCopy
 } from "@mui/icons-material"
+import DeploySuccess from "./DeploySuccess"
 
 const DeployWebsite = () => {
   const [deploying, setDeploying] = useState(false)
   const [deployProgress, setDeployProgress] = useState(0)
   const [deployStatus, setDeployStatus] = useState("ready") // ready, deploying, success, error
   const [websiteUrl, setWebsiteUrl] = useState("")
+
+  useEffect(() => {
+    let interval
+    if (deployStatus === "deploying") {
+      interval = setInterval(() => {
+        setDeployProgress((prev) => {
+          if (prev < 100) return prev + 10
+          clearInterval(interval)
+          setDeployStatus("success")
+          setWebsiteUrl("https://your-website-name.onrender.com")
+          return 100
+        })
+      }, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [deployStatus])
 
   const handleDeploy = async () => {
     setDeploying(true)
@@ -59,6 +76,17 @@ const DeployWebsite = () => {
       setDeployStatus("error")
     } finally {
       setDeploying(false)
+    }
+  }
+
+  const handleRefreshStatus = () => {
+    // In a real app, fetch the latest status from the backend here
+    if (deployStatus === "deploying" && deployProgress < 100) {
+      setDeployProgress((prev) => Math.min(prev + 20, 100))
+      if (deployProgress + 20 >= 100) {
+        setDeployStatus("success")
+        setWebsiteUrl("https://your-website-name.onrender.com")
+      }
     }
   }
 
@@ -117,66 +145,23 @@ const DeployWebsite = () => {
           <Typography variant="body2" color="text.secondary">
             {deployProgress}% complete
           </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            sx={{ mt: 2 }}
+            onClick={handleRefreshStatus}
+          >
+            Refresh Status
+          </Button>
         </Paper>
       )}
 
       {/* Success State */}
       {deployStatus === "success" && (
-        <Paper sx={{ p: 4, mb: 3, textAlign: "center" }}>
-          <CheckCircle sx={{ fontSize: 80, color: "#4caf50", mb: 2 }} />
-          <Typography variant="h4" gutterBottom sx={{ color: "#4caf50" }}>
-            Website Deployed Successfully!
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Your website is now live and accessible to anyone on the internet
-          </Typography>
-
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 2,
-              mb: 3
-            }}
-          >
-            <Typography variant="h6">Your Website URL:</Typography>
-            <Chip
-              label={websiteUrl}
-              variant="outlined"
-              icon={<Link />}
-              sx={{ fontSize: "1rem", py: 1 }}
-            />
-            <Button
-              variant="outlined"
-              startIcon={<ContentCopy />}
-              onClick={copyToClipboard}
-              size="small"
-            >
-              Copy
-            </Button>
-          </Box>
-
-          <Box sx={{ display: "flex", gap: 2, justifyContent: "center" }}>
-            <Button
-              variant="contained"
-              startIcon={<Launch />}
-              href={websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              size="large"
-            >
-              Visit Website
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => window.location.reload()}
-              size="large"
-            >
-              Deploy Another
-            </Button>
-          </Box>
-        </Paper>
+        <DeploySuccess
+          siteUrl={websiteUrl}
+          onDeployAnother={() => window.location.reload()}
+        />
       )}
 
       {/* Error State */}

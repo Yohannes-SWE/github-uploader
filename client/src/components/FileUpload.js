@@ -29,6 +29,8 @@ const FileUpload = ({ onFilesSelected }) => {
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
   const fileInputRef = useRef()
 
   const handleFileSelect = (selectedFiles) => {
@@ -41,6 +43,19 @@ const FileUpload = ({ onFilesSelected }) => {
       status: "ready"
     }))
 
+    // Check for unsupported files
+    const unsupported = newFiles.filter((f) => !isFileSupported(f.file))
+    if (unsupported.length > 0) {
+      setError(
+        `Unsupported file(s): ${unsupported
+          .map((f) => f.name)
+          .join(
+            ", "
+          )}. Only web files (HTML, CSS, JS, images, etc.) are allowed.`
+      )
+      return
+    }
+    setError("")
     setFiles((prev) => [...prev, ...newFiles])
     if (onFilesSelected) {
       onFilesSelected([...files, ...newFiles])
@@ -136,22 +151,22 @@ const FileUpload = ({ onFilesSelected }) => {
   const uploadFiles = async () => {
     setUploading(true)
     setUploadProgress(0)
-
+    setError("")
+    setSuccess("")
     try {
       // Simulate upload progress
       for (let i = 0; i <= 100; i += 10) {
         setUploadProgress(i)
         await new Promise((resolve) => setTimeout(resolve, 200))
       }
-
-      // Update file statuses
       setFiles((prev) => prev.map((f) => ({ ...f, status: "uploaded" })))
-
+      setSuccess("Files uploaded successfully!")
       // Here you would actually upload to your backend
       console.log("Files ready for upload:", files)
     } catch (error) {
       console.error("Upload failed:", error)
       setFiles((prev) => prev.map((f) => ({ ...f, status: "error" })))
+      setError("Upload failed. Please try again.")
     } finally {
       setUploading(false)
     }
@@ -161,6 +176,17 @@ const FileUpload = ({ onFilesSelected }) => {
 
   return (
     <Box>
+      {/* Error and Success Alerts */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess("")}>
+          {success}
+        </Alert>
+      )}
       {/* Upload Area */}
       <Paper
         sx={{

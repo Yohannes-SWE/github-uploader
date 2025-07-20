@@ -308,3 +308,35 @@
     width: 100%;
   }
 }
+
+@media (max-width: 600px) {
+  .setup-container {
+    padding: 16px;
+    max-width: 100vw;
+    border-radius: 0;
+  }
+  .step {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .form-group input {
+    font-size: 15px;
+    padding: 10px;
+  }
+  .form-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .next-btn,
+  .back-btn,
+  .submit-btn {
+    width: 100%;
+    font-size: 15px;
+    padding: 10px 0;
+  }
+  .url-display {
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+  }
+}

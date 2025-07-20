@@ -1,7 +1,7 @@
 // Configuration for different environments
 const config = {
   development: {
-    apiUrl: "http://localhost:8000",
+    apiUrl: "https://api.repotorpedo.com",
     environment: "development",
     debug: true,
     features: {
@@ -11,9 +11,7 @@ const config = {
     }
   },
   production: {
-    apiUrl:
-      process.env.REACT_APP_API_URL ||
-      "https://repotorpedo-backend.onrender.com",
+    apiUrl: process.env.REACT_APP_API_URL || "https://api.repotorpedo.com",
     environment: "production",
     debug: false,
     features: {
@@ -24,25 +22,21 @@ const config = {
   }
 }
 
-// Get current environment - default to production if on Render
-const isRenderDeployment = window.location.hostname.includes("onrender.com")
-const environment =
-  process.env.REACT_APP_ENVIRONMENT ||
-  (isRenderDeployment ? "production" : "development")
+// Force production environment to always use production URLs
+const environment = "production"
 
 // Debug logging
 console.log("Environment detection:", {
   REACT_APP_ENVIRONMENT: process.env.REACT_APP_ENVIRONMENT,
   REACT_APP_API_URL: process.env.REACT_APP_API_URL,
-  isRenderDeployment: isRenderDeployment,
-  detectedEnvironment: environment
+  forcedEnvironment: environment
 })
 
 // Export current configuration
 export const currentConfig = config[environment]
 
-// Export API URL for easy access
-export const API_URL = currentConfig.apiUrl
+// Export API URL for easy access - always use production URL
+const API_URL = process.env.REACT_APP_API_URL || "https://api.repotorpedo.com"
 
 // Debug logging
 console.log("API URL resolved:", API_URL)
@@ -56,8 +50,8 @@ export const FEATURES = currentConfig.features
 
 // Export domain information
 export const DOMAINS = {
-  frontend: "repotorpedo-frontend.onrender.com",
-  backend: "repotorpedo-backend.onrender.com"
+  frontend: "repotorpedo.com",
+  backend: "api.repotorpedo.com"
 }
 
 // Helper function to get full API URL
@@ -84,9 +78,21 @@ export const logError = (message, error = null) => {
 
 // Helper function to get domain URLs
 export const getDomainUrl = (type = "frontend") => {
-  const protocol = ENVIRONMENT === "production" ? "https" : "http"
+  const protocol = "https"
   const domain = DOMAINS[type]
   return `${protocol}://${domain}`
 }
 
-export default currentConfig
+export default {
+  API_URL,
+  FRONTEND_URL: "https://repotorpedo.com",
+  ENVIRONMENT,
+  DEBUG,
+  FEATURES,
+  DOMAINS,
+  getApiUrl,
+  isFeatureEnabled,
+  log,
+  logError,
+  getDomainUrl
+}

@@ -11,7 +11,7 @@ GITHUB_OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 GITHUB_OAUTH_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
 
 # Callback URL (update this to match your deployment)
-CALLBACK_URL = "https://repotorpedo-backend.onrender.com/api/auth/github/callback"
+CALLBACK_URL = "https://api.repotorpedo.com/api/auth/github/callback"
 
 # Scopes requested
 SCOPES = ["repo", "user"]

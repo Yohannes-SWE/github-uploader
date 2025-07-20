@@ -28,6 +28,8 @@ ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",
 
 # Always add production frontend URLs to ensure CORS works
 production_origins = [
+    "https://repotorpedo.com",
+    "https://www.repotorpedo.com",
     "https://github-uploader-frontend.onrender.com",
     "https://repotorpedo-frontend.onrender.com",
     "https://github-uploader.vercel.app",
@@ -80,8 +82,8 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
 
 # Determine URLs based on environment
 if os.getenv("ENVIRONMENT") == "production":
-    BASE_URL = os.getenv("BASE_URL", "https://repotorpedo-backend.onrender.com")
-    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://repotorpedo-frontend.onrender.com")
+    BASE_URL = os.getenv("BASE_URL", "https://api.repotorpedo.com")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://repotorpedo.com")
 else:
     BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
     # Determine frontend URL - use PORT env var if set (from dev dashboard), otherwise use FRONTEND_URL
@@ -122,7 +124,7 @@ except ImportError:
     UNIVERSAL_GITHUB_CLIENT_SECRET = "your_github_client_secret_here"
     GITHUB_OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
     GITHUB_OAUTH_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
-    CALLBACK_URL = "https://repotorpedo-backend.onrender.com/api/auth/github/callback"
+    CALLBACK_URL = "https://api.repotorpedo.com/api/auth/github/callback"
     SCOPES = ["repo", "user"]
     STATE_TIMEOUT = 300
     MAX_STATES = 1000
@@ -2136,7 +2138,7 @@ def setup_travis_project(token: str, config: dict) -> dict:
             "message": "Travis CI synced with GitHub repositories"
         }
     else:
-        raise HTTPException(status_code=400, detail="Failed to sync Travis CI")
+        raise HTTPException(status_code=400, detail="Failed to sync Travis CI") 
 
 # --- Render API Deployment Endpoints ---
 

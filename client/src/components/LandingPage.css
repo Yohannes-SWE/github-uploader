@@ -1,0 +1,82 @@
+.brand-logo {
+  width: 120px;
+  height: auto;
+  margin-bottom: 1.5rem;
+  display: block;
+}
+
+.landing-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #183046;
+  padding: 0 1rem;
+}
+
+.landing-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.landing-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.landing-subtitle {
+  font-size: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.get-started-btn {
+  background: #f28c28;
+  color: #fff;
+  font-size: 1.1rem;
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-weight: 600;
+}
+
+.get-started-btn:hover {
+  background: #ffb347;
+}
+
+.landing-features {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.feature {
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(34, 34, 59, 0.06);
+  padding: 1rem 1.5rem;
+  font-size: 1.1rem;
+  color: #22223b;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+@media (max-width: 600px) {
+  .landing-header h1 {
+    font-size: 1.5rem;
+  }
+  .landing-features {
+    max-width: 100%;
+    padding: 0 0.5rem;
+  }
+  .feature {
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+  }
+}

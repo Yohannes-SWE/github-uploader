@@ -19,11 +19,11 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: BASE_URL
-        value: https://repotorpedo-backend.onrender.com
+        value: https://api.repotorpedo.com
       - key: GITHUB_CALLBACK_URL
-        value: https://repotorpedo-backend.onrender.com/api/auth/github/callback
+        value: https://api.repotorpedo.com/api/auth/github/callback
       - key: ALLOWED_ORIGINS
-        value: https://repotorpedo-frontend.onrender.com
+        value: https://repotorpedo.com,https://www.repotorpedo.com
 
   - type: web
     name: repotorpedo-frontend
@@ -33,6 +33,6 @@ services:
     rootDir: .
     envVars:
       - key: REACT_APP_API_URL
-        value: https://repotorpedo-backend.onrender.com
+        value: https://api.repotorpedo.com
       - key: REACT_APP_ENVIRONMENT
         value: production
