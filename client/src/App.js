@@ -35,7 +35,7 @@ import {
   Help,
   Launch,
   FolderOpen,
-  Deploy,
+  Publish,
   Security,
   Speed,
   Star

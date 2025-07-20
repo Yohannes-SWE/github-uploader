@@ -23,7 +23,7 @@ import {
   CheckCircle,
   ArrowForward,
   Code,
-  Deploy,
+  Publish,
   Domain,
   KeyboardArrowDown,
   Settings,
@@ -42,7 +42,7 @@ const FEATURES_DATA = [
   },
   {
     id: "one-click-deploy",
-    icon: Deploy,
+    icon: Publish,
     title: "One-Click Deploy",
     description: "Deploy to Render with zero configuration",
     color: "#00d4aa"
