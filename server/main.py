@@ -2409,45 +2409,49 @@ def deploy_via_workflow(request: Request, deployment_data: dict):
     Generic deployment endpoint triggered by GitHub workflows
     Supports user-configured deployment targets (Render, Vercel, Railway, etc.)
     """
-    
+
     # Validate required fields
     required_fields = ["repository", "branch", "commit"]
     for field in required_fields:
         if field not in deployment_data:
-            raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
-    
+            raise HTTPException(
+                status_code=400, detail=f"Missing required field: {field}"
+            )
+
     repository = deployment_data["repository"]
     branch = deployment_data["branch"]
     commit = deployment_data["commit"]
     trigger = deployment_data.get("trigger", "unknown")
-    
+
     # Get user's configured deployment preferences
     # This would typically come from a database/user settings
     # For now, we'll check session or use defaults
-    
+
     deployment_config = request.session.get("deployment_config", {})
-    
+
     if not deployment_config:
         # If no config found, return available platforms for setup
         return {
             "status": "configuration_required",
             "message": "No deployment configuration found. Please set up your deployment preferences.",
             "available_platforms": ["render", "vercel", "railway", "netlify"],
-            "setup_url": "/setup"
+            "setup_url": "/setup",
         }
-    
+
     # Determine deployment target based on user preferences
     target_platform = deployment_config.get("platform", "render")
-    
+
     try:
         # Import the universal deployer
         from universal_deployer import UniversalDeployer, DeploymentConfig, ServiceType
-        
+
         # Check authentication for all platforms
         github_token = request.session.get("github_token")
         if not github_token:
-            raise HTTPException(status_code=401, detail="GitHub authentication required")
-        
+            raise HTTPException(
+                status_code=401, detail="GitHub authentication required"
+            )
+
         # Get platform-specific API key from session
         api_key = None
         if target_platform == "render":
@@ -2456,32 +2460,37 @@ def deploy_via_workflow(request: Request, deployment_data: dict):
             api_key = request.session.get("vercel_token")
         elif target_platform == "railway":
             api_key = request.session.get("railway_token")
-        
+
         if not api_key:
-            raise HTTPException(status_code=401, detail=f"{target_platform.title()} API key not found. Please connect your {target_platform.title()} account.")
-        
+            raise HTTPException(
+                status_code=401,
+                detail=f"{target_platform.title()} API key not found. Please connect your {target_platform.title()} account.",
+            )
+
         # Create deployment configuration
         repo_name = repository.split("/")[-1].replace(".git", "")
         config = DeploymentConfig(
             name=repo_name,
             service_type=ServiceType.WEB_SERVICE,
             environment="production",
-            build_command="npm run build" if "package.json" in repo_name else "pip install -r requirements.txt",
-            start_command="npm start" if "package.json" in repo_name else "python main.py",
-            env_vars={
-                "NODE_ENV": "production",
-                "BRANCH": branch,
-                "COMMIT": commit
-            }
+            build_command="npm run build"
+            if "package.json" in repo_name
+            else "pip install -r requirements.txt",
+            start_command="npm start"
+            if "package.json" in repo_name
+            else "python main.py",
+            env_vars={"NODE_ENV": "production", "BRANCH": branch, "COMMIT": commit},
         )
-        
+
         # Initialize universal deployer and deploy
         deployer = UniversalDeployer()
         deployer.add_provider(target_platform, api_key, config)
-        
+
         # Deploy to the specified platform
-        deployment_result = deployer.deploy_to_provider(target_platform, config, repository)
-        
+        deployment_result = deployer.deploy_to_provider(
+            target_platform, config, repository
+        )
+
         return {
             "status": "success",
             "platform": target_platform,
@@ -2493,11 +2502,11 @@ def deploy_via_workflow(request: Request, deployment_data: dict):
                 "deployment_id": deployment_result.deployment_id,
                 "url": deployment_result.url,
                 "status": deployment_result.status.value,
-                "provider": deployment_result.provider
+                "provider": deployment_result.provider,
             },
-            "triggered_by": trigger
+            "triggered_by": trigger,
         }
-        
+
     except Exception as e:
         return {
             "status": "error",
@@ -2506,7 +2515,7 @@ def deploy_via_workflow(request: Request, deployment_data: dict):
             "repository": repository,
             "branch": branch,
             "commit": commit,
-            "triggered_by": trigger
+            "triggered_by": trigger,
         }
 
 
@@ -2516,23 +2525,25 @@ def get_deployment_status(request: Request, commit: str = None, repository: str 
     Get deployment status for a specific commit or repository
     Used by GitHub workflows to check deployment progress
     """
-    
+
     if not commit and not repository:
-        raise HTTPException(status_code=400, detail="Either commit or repository parameter is required")
-    
+        raise HTTPException(
+            status_code=400, detail="Either commit or repository parameter is required"
+        )
+
     # In a real implementation, this would query a database of deployments
     # For now, we'll return a simple status based on available information
-    
+
     deployment_config = request.session.get("deployment_config", {})
-    
+
     if not deployment_config:
         return {
             "status": "no_configuration",
-            "message": "No deployment configuration found"
+            "message": "No deployment configuration found",
         }
-    
+
     platform = deployment_config.get("platform", "unknown")
-    
+
     # This is a simplified implementation
     # In production, you'd query your deployment tracking system
     return {
@@ -2542,7 +2553,7 @@ def get_deployment_status(request: Request, commit: str = None, repository: str 
         "repository": repository,
         "deployed_at": "2024-01-01T00:00:00Z",  # Would be actual timestamp
         "deployment_url": f"https://your-app.{platform}.com",  # Would be actual URL
-        "message": "Deployment completed successfully"
+        "message": "Deployment completed successfully",
     }
 
 
@@ -2821,97 +2832,94 @@ def get_user_deployments(request: Request):
 
 @app.post("/api/domain-providers/connect")
 def connect_domain_provider(
-    request: Request,
-    provider: str,
-    api_key: str,
-    api_secret: str = None
+    request: Request, provider: str, api_key: str, api_secret: str = None
 ):
     """Connect a domain provider account"""
-    
+
     # Check if user is authenticated with GitHub
     github_token = request.session.get("github_token")
     if not github_token:
         raise HTTPException(status_code=401, detail="GitHub authentication required")
-    
+
     try:
         from domain_providers import create_provider, DomainManager
-        
+
         # Create provider instance
         provider_instance = create_provider(provider, api_key, api_secret)
-        
+
         # Test the connection by listing domains
         domains = provider_instance.list_domains()
-        
+
         # Store provider credentials in session (encrypted in production)
         user_providers = request.session.get("domain_providers", {})
         user_providers[provider] = {
             "api_key": api_key,
             "api_secret": api_secret,
             "verified": True,
-            "domains_count": len(domains)
+            "domains_count": len(domains),
         }
         request.session["domain_providers"] = user_providers
-        
+
         return {
             "status": "success",
             "message": f"{provider.capitalize()} account connected successfully",
             "provider": provider,
             "domains_count": len(domains),
-            "domains": domains[:5]  # Return first 5 domains
+            "domains": domains[:5],  # Return first 5 domains
         }
-        
+
     except Exception as e:
         raise HTTPException(
-            status_code=400,
-            detail=f"Failed to connect {provider} account: {str(e)}"
+            status_code=400, detail=f"Failed to connect {provider} account: {str(e)}"
         )
 
 
 @app.get("/api/domain-providers/status")
 def get_domain_providers_status(request: Request):
     """Get status of connected domain providers"""
-    
+
     # Check if user is authenticated with GitHub
     github_token = request.session.get("github_token")
     if not github_token:
         raise HTTPException(status_code=401, detail="GitHub authentication required")
-    
+
     user_providers = request.session.get("domain_providers", {})
-    
+
     return {
         "status": "success",
         "providers": user_providers,
-        "connected_count": len([p for p in user_providers.values() if p.get("verified")])
+        "connected_count": len(
+            [p for p in user_providers.values() if p.get("verified")]
+        ),
     }
 
 
 @app.get("/api/domain-providers/{provider}/domains")
 def list_provider_domains(request: Request, provider: str):
     """List domains for a specific provider"""
-    
+
     # Check if user is authenticated with GitHub
     github_token = request.session.get("github_token")
     if not github_token:
         raise HTTPException(status_code=401, detail="GitHub authentication required")
-    
+
     # Get provider credentials from session
     user_providers = request.session.get("domain_providers", {})
     if provider not in user_providers:
         raise HTTPException(
-            status_code=400,
-            detail=f"{provider.capitalize()} account not connected"
+            status_code=400, detail=f"{provider.capitalize()} account not connected"
         )
-    
+
     provider_config = user_providers[provider]
-    
+
     try:
         if provider_config.get("auth_method") == "oauth":
             # Use OAuth token
             from domain_providers_oauth import DomainProviderOAuthManager
-            
+
             oauth_manager = DomainProviderOAuthManager(BASE_URL)
             oauth_provider = oauth_manager.oauth_providers[provider]
-            
+
             # Create domain provider with OAuth token
             domain_provider = oauth_provider.create_domain_provider(
                 provider_config["access_token"]
@@ -2919,123 +2927,107 @@ def list_provider_domains(request: Request, provider: str):
         else:
             # Use API key (backward compatibility)
             from domain_providers import create_provider
-            
+
             domain_provider = create_provider(
-                provider,
-                provider_config["api_key"],
-                provider_config["api_secret"]
+                provider, provider_config["api_key"], provider_config["api_secret"]
             )
-        
+
         domains = domain_provider.list_domains()
-        
+
         return {
             "status": "success",
             "provider": provider,
             "auth_method": provider_config.get("auth_method", "api_key"),
-            "domains": domains
+            "domains": domains,
         }
-        
+
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to list domains: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to list domains: {str(e)}")
 
 
 @app.get("/api/domain-providers/{provider}/domains/{domain}/records")
 def get_domain_records(request: Request, provider: str, domain: str):
     """Get DNS records for a specific domain"""
-    
+
     # Check if user is authenticated with GitHub
     github_token = request.session.get("github_token")
     if not github_token:
         raise HTTPException(status_code=401, detail="GitHub authentication required")
-    
+
     # Get provider credentials from session
     user_providers = request.session.get("domain_providers", {})
     if provider not in user_providers:
         raise HTTPException(
-            status_code=400,
-            detail=f"{provider.capitalize()} account not connected"
+            status_code=400, detail=f"{provider.capitalize()} account not connected"
         )
-    
+
     provider_config = user_providers[provider]
-    
+
     try:
         from domain_providers import create_provider
-        
+
         provider_instance = create_provider(
-            provider,
-            provider_config["api_key"],
-            provider_config["api_secret"]
+            provider, provider_config["api_key"], provider_config["api_secret"]
         )
-        
+
         records = provider_instance.list_dns_records(domain)
-        
+
         return {
             "status": "success",
             "provider": provider,
             "domain": domain,
-            "records": [record.__dict__ for record in records]
+            "records": [record.__dict__ for record in records],
         }
-        
+
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get DNS records: {str(e)}"
+            status_code=500, detail=f"Failed to get DNS records: {str(e)}"
         )
 
 
 @app.post("/api/domain-providers/{provider}/domains/{domain}/setup-render")
 def setup_render_domain(
-    request: Request,
-    provider: str,
-    domain: str,
-    render_service_url: str
+    request: Request, provider: str, domain: str, render_service_url: str
 ):
     """Set up DNS records for Render deployment"""
-    
+
     # Check if user is authenticated with GitHub
     github_token = request.session.get("github_token")
     if not github_token:
         raise HTTPException(status_code=401, detail="GitHub authentication required")
-    
+
     # Get provider credentials from session
     user_providers = request.session.get("domain_providers", {})
     if provider not in user_providers:
         raise HTTPException(
-            status_code=400,
-            detail=f"{provider.capitalize()} account not connected"
+            status_code=400, detail=f"{provider.capitalize()} account not connected"
         )
-    
+
     provider_config = user_providers[provider]
-    
+
     try:
         from domain_providers import create_provider, DomainManager
-        
+
         provider_instance = create_provider(
-            provider,
-            provider_config["api_key"],
-            provider_config["api_secret"]
+            provider, provider_config["api_key"], provider_config["api_secret"]
         )
-        
+
         domain_manager = DomainManager()
         domain_manager.register_provider(provider, provider_instance)
-        
+
         result = domain_manager.setup_render_domains(
             provider, domain, render_service_url
         )
-        
+
         return {
             "status": "success",
             "message": f"DNS records configured for {domain}",
-            "result": result
+            "result": result,
         }
-        
+
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to set up DNS records: {str(e)}"
+            status_code=500, detail=f"Failed to set up DNS records: {str(e)}"
         )
 
 
@@ -3046,51 +3038,47 @@ def setup_fullstack_domains(
     frontend_domain: str,
     backend_domain: str,
     frontend_url: str,
-    backend_url: str
+    backend_url: str,
 ):
     """Set up DNS records for full-stack application"""
-    
+
     # Check if user is authenticated with GitHub
     github_token = request.session.get("github_token")
     if not github_token:
         raise HTTPException(status_code=401, detail="GitHub authentication required")
-    
+
     # Get provider credentials from session
     user_providers = request.session.get("domain_providers", {})
     if provider not in user_providers:
         raise HTTPException(
-            status_code=400,
-            detail=f"{provider.capitalize()} account not connected"
+            status_code=400, detail=f"{provider.capitalize()} account not connected"
         )
-    
+
     provider_config = user_providers[provider]
-    
+
     try:
         from domain_providers import create_provider, DomainManager
-        
+
         provider_instance = create_provider(
-            provider,
-            provider_config["api_key"],
-            provider_config["api_secret"]
+            provider, provider_config["api_key"], provider_config["api_secret"]
         )
-        
+
         domain_manager = DomainManager()
         domain_manager.register_provider(provider, provider_instance)
-        
+
         result = domain_manager.setup_fullstack_domains(
             provider, frontend_domain, backend_domain, frontend_url, backend_url
         )
-        
+
         return {
             "status": "success",
             "message": "DNS records configured for full-stack application",
-            "result": result
+            "result": result,
         }
-        
+
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to set up DNS records: {str(e)}"
+            status_code=500, detail=f"Failed to set up DNS records: {str(e)}"
         )
 
 
@@ -3100,89 +3088,92 @@ def verify_dns_propagation(
     provider: str,
     domain: str,
     expected_value: str,
-    record_type: str = "CNAME"
+    record_type: str = "CNAME",
 ):
     """Verify DNS propagation for a domain"""
-    
+
     # Check if user is authenticated with GitHub
     github_token = request.session.get("github_token")
     if not github_token:
         raise HTTPException(status_code=401, detail="GitHub authentication required")
-    
+
     try:
         from domain_providers import DomainManager
-        
+
         domain_manager = DomainManager()
-        
+
         # Try multiple times with delays for propagation
         for attempt in range(5):
-            if domain_manager.verify_dns_propagation(domain, expected_value, record_type):
+            if domain_manager.verify_dns_propagation(
+                domain, expected_value, record_type
+            ):
                 return {
                     "status": "success",
                     "message": f"DNS propagation verified for {domain}",
-                    "attempts": attempt + 1
+                    "attempts": attempt + 1,
                 }
-            
+
             time.sleep(30)  # Wait 30 seconds between attempts
-        
+
         return {
             "status": "pending",
             "message": f"DNS propagation not yet complete for {domain}",
-            "attempts": 5
+            "attempts": 5,
         }
-        
+
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to verify DNS propagation: {str(e)}"
+            status_code=500, detail=f"Failed to verify DNS propagation: {str(e)}"
         )
 
 
 @app.post("/api/domain-providers/disconnect/{provider}")
 def disconnect_domain_provider(request: Request, provider: str):
     """Disconnect a domain provider account"""
-    
+
     # Check if user is authenticated with GitHub
     github_token = request.session.get("github_token")
     if not github_token:
         raise HTTPException(status_code=401, detail="GitHub authentication required")
-    
+
     # Remove provider from session
     user_providers = request.session.get("domain_providers", {})
     if provider in user_providers:
         del user_providers[provider]
         request.session["domain_providers"] = user_providers
-    
+
     return {
         "status": "success",
-        "message": f"{provider.capitalize()} account disconnected"
+        "message": f"{provider.capitalize()} account disconnected",
     }
 
 
 @app.get("/api/domain-providers/supported")
 def get_supported_providers(request: Request):
     """Get list of supported domain providers"""
-    
+
     try:
         from domain_providers_oauth import DomainProviderOAuthManager
-        
+
         oauth_manager = DomainProviderOAuthManager(BASE_URL)
         oauth_providers = oauth_manager.get_supported_providers()
-        
+
         # Combine OAuth and manual API providers
         all_providers = []
-        
+
         # Add OAuth-enabled providers
         for provider in oauth_providers:
-            all_providers.append({
-                "name": provider["name"],
-                "display_name": provider["display_name"],
-                "auth_method": "oauth",
-                "configured": provider["configured"],
-                "scopes": provider["scopes"],
-                "features": get_provider_features(provider["name"])
-            })
-        
+            all_providers.append(
+                {
+                    "name": provider["name"],
+                    "display_name": provider["display_name"],
+                    "auth_method": "oauth",
+                    "configured": provider["configured"],
+                    "scopes": provider["scopes"],
+                    "features": get_provider_features(provider["name"]),
+                }
+            )
+
         # Add manual API providers (for backward compatibility)
         manual_providers = [
             {
@@ -3191,7 +3182,11 @@ def get_supported_providers(request: Request):
                 "auth_method": "api_key",
                 "configured": True,
                 "api_docs": "https://developer.godaddy.com/doc/endpoint/domains",
-                "features": ["DNS Management", "Domain Registration", "SSL Certificates"]
+                "features": [
+                    "DNS Management",
+                    "Domain Registration",
+                    "SSL Certificates",
+                ],
             },
             {
                 "name": "namecheap",
@@ -3199,7 +3194,7 @@ def get_supported_providers(request: Request):
                 "auth_method": "api_key",
                 "configured": True,
                 "api_docs": "https://www.namecheap.com/support/api/",
-                "features": ["DNS Management", "Domain Registration", "WHOIS Privacy"]
+                "features": ["DNS Management", "Domain Registration", "WHOIS Privacy"],
             },
             {
                 "name": "cloudflare",
@@ -3207,7 +3202,12 @@ def get_supported_providers(request: Request):
                 "auth_method": "api_key",
                 "configured": True,
                 "api_docs": "https://developers.cloudflare.com/api/",
-                "features": ["DNS Management", "CDN", "SSL Certificates", "DDoS Protection"]
+                "features": [
+                    "DNS Management",
+                    "CDN",
+                    "SSL Certificates",
+                    "DDoS Protection",
+                ],
             },
             {
                 "name": "squarespace",
@@ -3215,15 +3215,15 @@ def get_supported_providers(request: Request):
                 "auth_method": "api_key",
                 "configured": True,
                 "api_docs": "https://developers.squarespace.com/",
-                "features": ["DNS Management", "Website Builder", "E-commerce"]
-            }
+                "features": ["DNS Management", "Website Builder", "E-commerce"],
+            },
         ]
-        
+
         # Merge providers, preferring OAuth over manual API
         provider_map = {}
         for provider in manual_providers:
             provider_map[provider["name"]] = provider
-        
+
         for provider in oauth_providers:
             provider_map[provider["name"]] = {
                 "name": provider["name"],
@@ -3231,14 +3231,11 @@ def get_supported_providers(request: Request):
                 "auth_method": "oauth",
                 "configured": provider["configured"],
                 "scopes": provider["scopes"],
-                "features": get_provider_features(provider["name"])
+                "features": get_provider_features(provider["name"]),
             }
-        
-        return {
-            "status": "success",
-            "providers": list(provider_map.values())
-        }
-        
+
+        return {"status": "success", "providers": list(provider_map.values())}
+
     except Exception as e:
         # Fallback to manual providers if OAuth is not configured
         return {
@@ -3250,7 +3247,11 @@ def get_supported_providers(request: Request):
                     "auth_method": "api_key",
                     "configured": True,
                     "api_docs": "https://developer.godaddy.com/doc/endpoint/domains",
-                    "features": ["DNS Management", "Domain Registration", "SSL Certificates"]
+                    "features": [
+                        "DNS Management",
+                        "Domain Registration",
+                        "SSL Certificates",
+                    ],
                 },
                 {
                     "name": "namecheap",
@@ -3258,7 +3259,11 @@ def get_supported_providers(request: Request):
                     "auth_method": "api_key",
                     "configured": True,
                     "api_docs": "https://www.namecheap.com/support/api/",
-                    "features": ["DNS Management", "Domain Registration", "WHOIS Privacy"]
+                    "features": [
+                        "DNS Management",
+                        "Domain Registration",
+                        "WHOIS Privacy",
+                    ],
                 },
                 {
                     "name": "cloudflare",
@@ -3266,7 +3271,12 @@ def get_supported_providers(request: Request):
                     "auth_method": "api_key",
                     "configured": True,
                     "api_docs": "https://developers.cloudflare.com/api/",
-                    "features": ["DNS Management", "CDN", "SSL Certificates", "DDoS Protection"]
+                    "features": [
+                        "DNS Management",
+                        "CDN",
+                        "SSL Certificates",
+                        "DDoS Protection",
+                    ],
                 },
                 {
                     "name": "squarespace",
@@ -3274,19 +3284,40 @@ def get_supported_providers(request: Request):
                     "auth_method": "api_key",
                     "configured": True,
                     "api_docs": "https://developers.squarespace.com/",
-                    "features": ["DNS Management", "Website Builder", "E-commerce"]
-                }
-            ]
+                    "features": ["DNS Management", "Website Builder", "E-commerce"],
+                },
+            ],
         }
 
 
 def get_provider_features(provider_name: str) -> List[str]:
     """Get features for a specific provider"""
     features_map = {
-        "godaddy": ["DNS Management", "Domain Registration", "SSL Certificates", "OAuth Support"],
-        "namecheap": ["DNS Management", "Domain Registration", "WHOIS Privacy", "OAuth Support"],
-        "cloudflare": ["DNS Management", "CDN", "SSL Certificates", "DDoS Protection", "OAuth Support"],
-        "squarespace": ["DNS Management", "Website Builder", "E-commerce", "OAuth Support"]
+        "godaddy": [
+            "DNS Management",
+            "Domain Registration",
+            "SSL Certificates",
+            "OAuth Support",
+        ],
+        "namecheap": [
+            "DNS Management",
+            "Domain Registration",
+            "WHOIS Privacy",
+            "OAuth Support",
+        ],
+        "cloudflare": [
+            "DNS Management",
+            "CDN",
+            "SSL Certificates",
+            "DDoS Protection",
+            "OAuth Support",
+        ],
+        "squarespace": [
+            "DNS Management",
+            "Website Builder",
+            "E-commerce",
+            "OAuth Support",
+        ],
     }
     return features_map.get(provider_name, ["DNS Management"])
 
@@ -3297,61 +3328,57 @@ def get_provider_features(provider_name: str) -> List[str]:
 @app.get("/api/domain-providers/oauth/login/{provider}")
 def domain_provider_oauth_login(request: Request, provider: str):
     """Initiate OAuth login for a domain provider"""
-    
+
     # Check if user is authenticated with GitHub
     github_token = request.session.get("github_token")
     if not github_token:
         raise HTTPException(status_code=401, detail="GitHub authentication required")
-    
+
     try:
         from domain_providers_oauth import DomainProviderOAuthManager
-        
+
         oauth_manager = DomainProviderOAuthManager(BASE_URL)
-        
+
         if not oauth_manager.is_provider_configured(provider):
             raise HTTPException(
                 status_code=400,
-                detail=f"OAuth not configured for {provider}. Please use API key authentication instead."
+                detail=f"OAuth not configured for {provider}. Please use API key authentication instead.",
             )
-        
+
         # Get OAuth URL
         oauth_data = oauth_manager.get_oauth_url(provider)
-        
+
         return {
             "auth_url": oauth_data["auth_url"],
             "state": oauth_data["state"],
-            "provider": provider
+            "provider": provider,
         }
-        
+
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to initiate OAuth for {provider}: {str(e)}"
+            status_code=500, detail=f"Failed to initiate OAuth for {provider}: {str(e)}"
         )
 
 
 @app.get("/api/domain-providers/oauth/callback/{provider}")
 def domain_provider_oauth_callback(
-    request: Request,
-    provider: str,
-    code: str,
-    state: str = None
+    request: Request, provider: str, code: str, state: str = None
 ):
     """Handle OAuth callback from domain provider"""
-    
+
     # Check if user is authenticated with GitHub
     github_token = request.session.get("github_token")
     if not github_token:
         raise HTTPException(status_code=401, detail="GitHub authentication required")
-    
+
     try:
         from domain_providers_oauth import DomainProviderOAuthManager
-        
+
         oauth_manager = DomainProviderOAuthManager(BASE_URL)
-        
+
         # Handle OAuth callback
         oauth_result = oauth_manager.handle_oauth_callback(provider, code, state)
-        
+
         # Store provider credentials in session
         user_providers = request.session.get("domain_providers", {})
         user_providers[provider] = {
@@ -3361,14 +3388,14 @@ def domain_provider_oauth_callback(
             "expires_in": oauth_result.get("expires_in"),
             "user_info": oauth_result["user_info"],
             "verified": True,
-            "connected_at": time.time()
+            "connected_at": time.time(),
         }
         request.session["domain_providers"] = user_providers
-        
+
         # Test the connection by listing domains
         domain_provider = oauth_result["domain_provider"]
         domains = domain_provider.list_domains()
-        
+
         return {
             "status": "success",
             "message": f"{provider.capitalize()} account connected successfully via OAuth",
@@ -3376,38 +3403,33 @@ def domain_provider_oauth_callback(
             "auth_method": "oauth",
             "user_info": oauth_result["user_info"],
             "domains_count": len(domains),
-            "domains": domains[:5]  # Return first 5 domains
+            "domains": domains[:5],  # Return first 5 domains
         }
-        
+
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"OAuth callback failed for {provider}: {str(e)}"
+            status_code=500, detail=f"OAuth callback failed for {provider}: {str(e)}"
         )
 
 
 @app.get("/api/domain-providers/oauth/status")
 def get_oauth_status(request: Request):
     """Get OAuth configuration status for domain providers"""
-    
+
     try:
         from domain_providers_oauth import DomainProviderOAuthManager
-        
+
         oauth_manager = DomainProviderOAuthManager(BASE_URL)
         oauth_providers = oauth_manager.get_supported_providers()
-        
+
         return {
             "status": "success",
             "oauth_configured": len(oauth_providers) > 0,
-            "providers": oauth_providers
+            "providers": oauth_providers,
         }
-        
+
     except Exception as e:
-        return {
-            "status": "success",
-            "oauth_configured": False,
-            "providers": []
-        }
+        return {"status": "success", "oauth_configured": False, "providers": []}
 
 
 @app.get("/api/render/services/{service_id}/domains")
@@ -3436,9 +3458,7 @@ def list_service_domains(request: Request, service_id: str):
         return {"status": "success", "domains": domains}
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to list domains: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to list domains: {str(e)}")
 
 
 @app.post("/api/render/services/{service_id}/domains")
@@ -3471,9 +3491,7 @@ def add_service_domain(request: Request, service_id: str, domain: str):
         }
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to add domain: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to add domain: {str(e)}")
 
 
 @app.delete("/api/render/services/{service_id}/domains/{domain_id}")
@@ -3536,9 +3554,7 @@ def get_service_domain(request: Request, service_id: str, domain_id: str):
         return {"status": "success", "domain": domain}
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get domain: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get domain: {str(e)}")
 
 
 @app.post("/api/render/services/{service_id}/domains/{domain_id}/verify")
@@ -3682,10 +3698,10 @@ def render_login(request: Request):
                 "Click 'Create API Key'",
                 "Give it a name like 'GitHub Uploader'",
                 "Copy the generated key (starts with 'rnd_')",
-                "Paste it below and click 'Connect'"
+                "Paste it below and click 'Connect'",
             ],
-            "help_text": "Your API key is stored securely in your session and used only for deployments."
-        }
+            "help_text": "Your API key is stored securely in your session and used only for deployments.",
+        },
     }
 
 

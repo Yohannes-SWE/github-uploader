@@ -272,7 +272,10 @@ class UniversalRenderDeployer:
         return config
 
     def generate_backend_config(
-        self, app_type: str, project_name: str, custom_domains: Optional[List[str]] = None
+        self,
+        app_type: str,
+        project_name: str,
+        custom_domains: Optional[List[str]] = None,
     ) -> RenderServiceConfig:
         """Generate backend service configuration"""
 
@@ -322,7 +325,10 @@ class UniversalRenderDeployer:
         return configs.get(app_type, configs["python"])
 
     def generate_frontend_config(
-        self, app_type: str, project_name: str, custom_domains: Optional[List[str]] = None
+        self,
+        app_type: str,
+        project_name: str,
+        custom_domains: Optional[List[str]] = None,
     ) -> RenderServiceConfig:
         """Generate frontend service configuration"""
 
@@ -395,7 +401,9 @@ class UniversalRenderDeployer:
 
         # Deploy backend if present
         if app_config.get("backend"):
-            backend_domains = custom_domains.get("backend", []) if custom_domains else None
+            backend_domains = (
+                custom_domains.get("backend", []) if custom_domains else None
+            )
             backend_config = self.generate_backend_config(
                 app_config["backend"], project_name, backend_domains
             )
@@ -421,7 +429,9 @@ class UniversalRenderDeployer:
 
         # Deploy frontend if present
         if app_config.get("frontend"):
-            frontend_domains = custom_domains.get("frontend", []) if custom_domains else None
+            frontend_domains = (
+                custom_domains.get("frontend", []) if custom_domains else None
+            )
             frontend_config = self.generate_frontend_config(
                 app_config["frontend"], project_name, frontend_domains
             )
