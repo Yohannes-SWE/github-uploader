@@ -2440,36 +2440,61 @@ def deploy_via_workflow(request: Request, deployment_data: dict):
     target_platform = deployment_config.get("platform", "render")
     
     try:
+        # Import the universal deployer
+        from universal_deployer import UniversalDeployer, DeploymentConfig, ServiceType
+        
+        # Check authentication for all platforms
+        github_token = request.session.get("github_token")
+        if not github_token:
+            raise HTTPException(status_code=401, detail="GitHub authentication required")
+        
+        # Get platform-specific API key from session
+        api_key = None
         if target_platform == "render":
-            # Use existing Render deployment logic
-            github_token = request.session.get("github_token")
-            if not github_token:
-                raise HTTPException(status_code=401, detail="GitHub authentication required")
-            
-            # Extract repo name from URL
-            repo_name = repository.split("/")[-1]
-            
-            # Trigger Render deployment using existing function
-            result = deploy_to_render_internal(request, repository, repo_name)
-            
+            api_key = request.session.get("render_api_key")
         elif target_platform == "vercel":
-            # Trigger Vercel deployment
-            result = deploy_to_vercel_internal(request, repository, branch, commit)
-            
+            api_key = request.session.get("vercel_token")
         elif target_platform == "railway":
-            # Trigger Railway deployment  
-            result = deploy_to_railway_internal(request, repository, branch, commit)
-            
-        else:
-            raise HTTPException(status_code=400, detail=f"Unsupported platform: {target_platform}")
-            
+            api_key = request.session.get("railway_token")
+        
+        if not api_key:
+            raise HTTPException(status_code=401, detail=f"{target_platform.title()} API key not found. Please connect your {target_platform.title()} account.")
+        
+        # Create deployment configuration
+        repo_name = repository.split("/")[-1].replace(".git", "")
+        config = DeploymentConfig(
+            name=repo_name,
+            service_type=ServiceType.WEB_SERVICE,
+            environment="production",
+            build_command="npm run build" if "package.json" in repo_name else "pip install -r requirements.txt",
+            start_command="npm start" if "package.json" in repo_name else "python main.py",
+            env_vars={
+                "NODE_ENV": "production",
+                "BRANCH": branch,
+                "COMMIT": commit
+            }
+        )
+        
+        # Initialize universal deployer and deploy
+        deployer = UniversalDeployer()
+        deployer.add_provider(target_platform, api_key, config)
+        
+        # Deploy to the specified platform
+        deployment_result = deployer.deploy_to_provider(target_platform, config, repository)
+        
         return {
             "status": "success",
             "platform": target_platform,
             "repository": repository,
             "branch": branch,
             "commit": commit,
-            "deployment_result": result,
+            "deployment_result": {
+                "service_id": deployment_result.service_id,
+                "deployment_id": deployment_result.deployment_id,
+                "url": deployment_result.url,
+                "status": deployment_result.status.value,
+                "provider": deployment_result.provider
+            },
             "triggered_by": trigger
         }
         
@@ -2479,8 +2504,10 @@ def deploy_via_workflow(request: Request, deployment_data: dict):
             "message": str(e),
             "platform": target_platform,
             "repository": repository,
-                         "commit": commit
-         }
+            "branch": branch,
+            "commit": commit,
+            "triggered_by": trigger
+        }
 
 
 @app.get("/api/deployment-status")
