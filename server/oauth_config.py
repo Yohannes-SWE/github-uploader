@@ -18,4 +18,4 @@ SCOPES = ["repo", "user"]
 
 # Security settings
 STATE_TIMEOUT = 300  # 5 minutes
-MAX_STATES = 1000    # Maximum number of pending states to store 
+MAX_STATES = 1000  # Maximum number of pending states to store
