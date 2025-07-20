@@ -127,8 +127,6 @@ DeploymentSection.propTypes = {
 }
 
 const StatusBar = () => {
-  const currentTime = useMemo(() => new Date(), [])
-
   return (
     <Box className="status-bar" role="status">
       <Box display="flex" alignItems="center" gap={2}>

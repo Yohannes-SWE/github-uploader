@@ -4,19 +4,12 @@ import {
   Box,
   Typography,
   Button,
-  TextField,
   Paper,
-  Grid,
-  Card,
-  CardContent,
   Alert,
   CircularProgress,
   Stepper,
   Step,
   StepLabel,
-  StepContent,
-  Chip,
-  Divider,
   IconButton,
   Tooltip,
   Dialog,
@@ -24,22 +17,7 @@ import {
   DialogContent,
   DialogActions
 } from "@mui/material"
-import {
-  GitHub,
-  CloudUpload,
-  Settings,
-  Link,
-  CheckCircle,
-  Error,
-  Info,
-  Help,
-  Launch,
-  FolderOpen,
-  Publish,
-  Security,
-  Speed,
-  Star
-} from "@mui/icons-material"
+import { GitHub, CloudUpload, Help, Launch } from "@mui/icons-material"
 import RenderDeploy from "./components/RenderDeploy"
 import FileUpload from "./components/FileUpload"
 import DeployWebsite from "./components/DeployWebsite"

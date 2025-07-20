@@ -9,19 +9,15 @@ import {
   List,
   ListItem,
   ListItemIcon,
-  ListItemText,
-  Chip,
-  Divider
+  ListItemText
 } from "@mui/material"
 import {
   Launch,
-  CheckCircle,
   Error,
   Schedule,
   Security,
   Speed,
-  Link,
-  ContentCopy
+  Link
 } from "@mui/icons-material"
 import DeploySuccess from "./DeploySuccess"
 
@@ -88,10 +84,6 @@ const DeployWebsite = () => {
         setWebsiteUrl("https://your-website-name.onrender.com")
       }
     }
-  }
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(websiteUrl)
   }
 
   const getStatusMessage = () => {

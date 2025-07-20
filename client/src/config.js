@@ -84,7 +84,7 @@ export const getDomainUrl = (type = "frontend") => {
   return `${protocol}://${domain}`
 }
 
-export default {
+const configExport = {
   API_URL,
   FRONTEND_URL: "https://repotorpedo.com",
   ENVIRONMENT,
@@ -97,3 +97,5 @@ export default {
   logError,
   getDomainUrl
 }
+
+export default configExport
