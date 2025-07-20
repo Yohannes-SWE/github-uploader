@@ -307,9 +307,20 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
 
       {/* Hero Section with Code Editor */}
       <Container maxWidth="lg" className="hero-section">
-        <Box textAlign="center" py={8}>
+        <Box textAlign="center" py={12}>
           <Typography variant="h1" className="hero-title" component="h2">
-            It has never been easier to build software.
+            Your daily list of
+          </Typography>
+          <Typography
+            variant="h1"
+            className="hero-title-accent"
+            component="span"
+          >
+            fresh deployment leads
+          </Typography>
+          <Typography variant="h6" className="hero-subtitle" mt={3} mb={4}>
+            RepoTorpedo is an agent that finds deployment opportunities for you.
+            So you can focus on doing great work, not hunting for it.
           </Typography>
 
           {/* Code Editor Window */}
@@ -453,15 +464,18 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
           </Box>
 
           {/* Email Signup Form */}
-          <Paper className="email-form" elevation={0} component="section">
+          <Box className="email-form-container" component="section">
             <form onSubmit={handleEmailSubmit} noValidate>
               <Box
                 display="flex"
                 gap={2}
+                alignItems="center"
+                justifyContent="center"
                 flexDirection={isMobile ? "column" : "row"}
+                maxWidth={500}
+                margin="0 auto"
               >
                 <TextField
-                  fullWidth
                   variant="outlined"
                   placeholder="Enter your email"
                   value={email}
@@ -473,6 +487,7 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
                   type="email"
                   required
                   aria-label="Email address"
+                  sx={{ flex: 1, minWidth: 280 }}
                   InputProps={{
                     className: "email-input-field"
                   }}
@@ -489,11 +504,60 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
                 </Button>
               </Box>
             </form>
-          </Paper>
 
-          <Typography variant="body2" className="beta-note">
-            First 100 sign-ups get a lifetime discount.
-          </Typography>
+            <Typography variant="body2" className="beta-note" mt={2}>
+              First 100 sign-ups get a lifetime discount.
+            </Typography>
+          </Box>
+
+          {/* Preview Card */}
+          <Box className="preview-card-container" mt={6}>
+            <Paper className="preview-card" elevation={0}>
+              <Box className="preview-header">
+                <Box className="preview-icon">
+                  <Launch sx={{ color: "#ff5f56" }} />
+                </Box>
+                <Typography variant="h6" className="preview-title">
+                  Searching for deployment opportunities
+                </Typography>
+              </Box>
+              <Typography variant="body2" className="preview-stats">
+                42 deployments found today
+              </Typography>
+              <Box className="preview-item">
+                <Box className="platform-icon">
+                  <Box
+                    component="img"
+                    src="/logo.png"
+                    alt="Render"
+                    sx={{ width: 24, height: 24, borderRadius: "4px" }}
+                  />
+                </Box>
+                <Box>
+                  <Typography variant="body2" className="preview-item-title">
+                    React App to Render
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    className="preview-item-subtitle"
+                  >
+                    Deploying 12-page marketing site...
+                  </Typography>
+                </Box>
+                <Chip label="89%" size="small" className="progress-chip" />
+              </Box>
+            </Paper>
+
+            {/* Hand-drawn annotation */}
+            <Box className="annotation-container">
+              <Typography className="annotation-text">
+                RepoTorpedo makes finding
+                <br />
+                deployments this easy
+              </Typography>
+              <Box className="annotation-arrow" />
+            </Box>
+          </Box>
         </Box>
       </Container>
 
