@@ -25,7 +25,7 @@ fi
 
 # Install performance analysis tools
 echo -e "${YELLOW}🛠️ Installing analysis tools...${NC}"
-npm install --save-dev webpack-bundle-analyzer critical
+npm install --save-dev webpack-bundle-analyzer
 
 # Build with analysis
 echo -e "${BLUE}🏗️ Building with bundle analysis...${NC}"
