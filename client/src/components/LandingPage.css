@@ -1,62 +1,34 @@
 /* ==========================================================================
-   Modern Tech Landing Page - Simplified & Clean
+   Ultra-Minimal Landing Page - Clean Black Box Aesthetic
    ========================================================================== */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap");
 
-/* CSS Custom Properties for Tech Theme */
+/* CSS Custom Properties for Minimal Theme */
 :root {
-  /* Colors - Tech Focused */
-  --color-bg-primary: #0f0f23;
-  --color-bg-secondary: #1a1a2e;
-  --color-bg-tertiary: #16213e;
-
+  /* Colors - Ultra Minimal */
+  --color-bg: #000000;
   --color-text-primary: #ffffff;
-  --color-text-secondary: rgba(255, 255, 255, 0.8);
-  --color-text-muted: rgba(255, 255, 255, 0.5);
+  --color-text-secondary: rgba(255, 255, 255, 0.7);
+  --color-text-muted: rgba(255, 255, 255, 0.4);
 
-  --color-accent-green: #00ff88;
-  --color-accent-blue: #00d4ff;
-  --color-accent-red: #ff6b6b;
-  --color-accent-cyan: #4ecdc4;
+  /* Typography */
+  --font-family-primary: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
 
-  /* Gradients - Modern Tech */
-  --gradient-primary: linear-gradient(135deg, #00ff88 0%, #00d4ff 100%);
-  --gradient-secondary: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%);
-  --gradient-accent: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --gradient-bg: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-
-  /* Spacing - Consistent Scale */
+  /* Spacing - Minimal Scale */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
   --space-md: 1rem;
   --space-lg: 1.5rem;
   --space-xl: 2rem;
-  --space-2xl: 3rem;
-  --space-3xl: 4rem;
-  --space-4xl: 6rem;
 
-  /* Border Radius - Modern */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-
-  /* Typography */
-  --font-family-primary: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-family-mono: "JetBrains Mono", Monaco, Menlo, monospace;
-
-  /* Shadows - Subtle Tech */
-  --shadow-sm: 0 4px 20px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
-  --shadow-accent: 0 8px 30px rgba(255, 107, 107, 0.3);
+  /* Border Radius - Subtle */
+  --radius-sm: 6px;
+  --radius-md: 8px;
 
   /* Transitions */
   --transition-fast: 0.15s ease-out;
   --transition-normal: 0.3s ease-out;
-  --transition-slow: 0.5s ease-out;
 }
 
 /* Global Styles */
@@ -68,86 +40,48 @@
   font-family: var(--font-family-primary);
   min-height: 100vh;
   color: var(--color-text-primary);
-  background: var(--gradient-bg);
+  background: var(--color-bg);
   overflow-x: hidden;
   position: relative;
 }
 
 /* Typography Enhancements */
-.landing-page h1,
-.landing-page h2,
-.landing-page h3,
-.landing-page h4,
-.landing-page h5,
-.landing-page h6 {
+.landing-page h1 {
   font-family: var(--font-family-primary);
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.2;
   letter-spacing: -0.02em;
-}
-
-/* Code Terminal Styles */
-.code-terminal {
-  position: relative;
-  backdrop-filter: blur(20px);
-  box-shadow: var(--shadow-lg);
-  transition: transform var(--transition-normal);
-}
-
-.code-terminal:hover {
-  transform: translateY(-4px);
-}
-
-.code-terminal pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  font-family: var(--font-family-mono);
 }
 
 /* Button Enhancements */
 .MuiButton-root {
   transition: all var(--transition-normal) !important;
   text-transform: none !important;
-  font-weight: 600 !important;
   font-family: var(--font-family-primary) !important;
-}
-
-/* Tech Feature Cards */
-.tech-feature {
-  transition: transform var(--transition-normal);
-}
-
-.tech-feature:hover {
-  transform: translateY(-2px);
 }
 
 /* Input Field Enhancements */
 .MuiOutlinedInput-root {
   transition: all var(--transition-normal) !important;
-  backdrop-filter: blur(10px) !important;
+  font-family: var(--font-family-primary) !important;
 }
 
-.MuiOutlinedInput-root:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
-}
-
-/* Scrollbar Styling for WebKit browsers */
+/* Scrollbar Styling - Minimal */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-primary);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-accent-green);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-accent-blue);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Responsive Design */
@@ -155,57 +89,20 @@
   .landing-page {
     padding: 0 var(--space-md);
   }
-
-  .code-terminal {
-    margin: 0 auto;
-    max-width: 100%;
-    font-size: 12px !important;
-  }
-}
-
-/* Animation Keyframes */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes glow {
-  0% {
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
-  }
-  100% {
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
-  }
-}
-
-/* Loading States */
-.MuiButton-root:disabled {
-  opacity: 0.6 !important;
-  cursor: not-allowed !important;
 }
 
 /* Focus States for Accessibility */
 .MuiButton-root:focus,
 .MuiOutlinedInput-root:focus-within {
-  outline: 2px solid var(--color-accent-green);
+  outline: 2px solid rgba(255, 255, 255, 0.5);
   outline-offset: 2px;
 }
 
 /* High Contrast Mode Support */
 @media (prefers-contrast: high) {
   :root {
-    --color-bg-primary: #000000;
+    --color-bg: #000000;
     --color-text-primary: #ffffff;
-    --gradient-bg: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
   }
 }
 
@@ -225,7 +122,6 @@
     color: black !important;
   }
 
-  .code-terminal,
   .MuiButton-root {
     display: none !important;
   }
