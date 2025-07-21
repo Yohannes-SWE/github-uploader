@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, Suspense, lazy } from "react"
 import {
   Container,
   Box,
@@ -18,12 +18,14 @@ import {
   DialogActions
 } from "@mui/material"
 import { GitHub, CloudUpload, Help, Launch } from "@mui/icons-material"
-import RenderDeploy from "./components/RenderDeploy"
-import FileUpload from "./components/FileUpload"
-import DeployWebsite from "./components/DeployWebsite"
-import AuthDebug from "./components/AuthDebug"
-import LandingPage from "./components/LandingPage"
 import { API_URL } from "./config"
+
+// Lazy load heavy components for better performance
+const RenderDeploy = lazy(() => import("./components/RenderDeploy"))
+const FileUpload = lazy(() => import("./components/FileUpload"))
+const DeployWebsite = lazy(() => import("./components/DeployWebsite"))
+const AuthDebug = lazy(() => import("./components/AuthDebug"))
+const LandingPage = lazy(() => import("./components/LandingPage"))
 
 // Step Panel component
 function StepPanel({ children, value, index, ...other }) {
@@ -122,9 +124,32 @@ function App() {
     setCurrentStep(step)
   }
 
+  // Loading component for Suspense fallback
+  const LoadingFallback = ({ message = "Loading..." }) => (
+    <Container maxWidth="md">
+      <Box
+        display="flex"
+        flexDirection="column"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="50vh"
+        textAlign="center"
+      >
+        <CircularProgress size={40} sx={{ mb: 2 }} />
+        <Typography variant="body2" color="text.secondary">
+          {message}
+        </Typography>
+      </Box>
+    </Container>
+  )
+
   // Show debug page if URL contains /debug
   if (window.location.pathname === "/debug") {
-    return <AuthDebug />
+    return (
+      <Suspense fallback={<LoadingFallback message="Loading debug tools..." />}>
+        <AuthDebug />
+      </Suspense>
+    )
   }
 
   if (checkingAuth) {
@@ -149,7 +174,13 @@ function App() {
 
   if (!isAuthenticated) {
     if (showLanding) {
-      return <LandingPage onGetStarted={() => setShowLanding(false)} />
+      return (
+        <Suspense
+          fallback={<LoadingFallback message="Loading landing page..." />}
+        >
+          <LandingPage onGetStarted={() => setShowLanding(false)} />
+        </Suspense>
+      )
     }
     // Onboarding wizard for unauthenticated users
     return (
@@ -423,7 +454,13 @@ function App() {
               We'll connect to Render to host your website for free. This is
               where your website will live on the internet.
             </Typography>
-            <RenderDeploy />
+            <Suspense
+              fallback={
+                <LoadingFallback message="Loading deployment tools..." />
+              }
+            >
+              <RenderDeploy />
+            </Suspense>
           </Paper>
         </StepPanel>
 
@@ -436,7 +473,11 @@ function App() {
               Drag and drop your website files here. We support HTML, CSS,
               JavaScript, images, and more.
             </Typography>
-            <FileUpload />
+            <Suspense
+              fallback={<LoadingFallback message="Loading file upload..." />}
+            >
+              <FileUpload />
+            </Suspense>
           </Paper>
         </StepPanel>
 
@@ -449,7 +490,11 @@ function App() {
               Click deploy to make your website live on the internet. You'll get
               a public URL to share with others.
             </Typography>
-            <DeployWebsite />
+            <Suspense
+              fallback={<LoadingFallback message="Loading website deploy..." />}
+            >
+              <DeployWebsite />
+            </Suspense>
           </Paper>
         </StepPanel>
 

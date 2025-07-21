@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react"
+import React, { useState, useCallback, useMemo, memo } from "react"
 import PropTypes from "prop-types"
 import {
   Box,
@@ -72,14 +72,16 @@ const STATS_DATA = [
   }
 ]
 
-// Reusable components for better maintainability
-const WindowControls = () => (
+// Memoized reusable components for better performance
+const WindowControls = memo(() => (
   <Box display="flex" alignItems="center" gap={1}>
     <Box className="window-button red" aria-label="Close window" />
     <Box className="window-button yellow" aria-label="Minimize window" />
     <Box className="window-button green" aria-label="Maximize window" />
   </Box>
-)
+))
+
+WindowControls.displayName = "WindowControls"
 
 const LineNumbers = ({ count = 20 }) => (
   <Box className="line-numbers" role="presentation">
@@ -156,6 +158,61 @@ const StatusBar = () => {
     </Box>
   )
 }
+
+// Memoized Feature Card component for better performance
+const FeatureCard = memo(({ feature }) => {
+  const IconComponent = feature.icon
+  return (
+    <Grid item xs={12} md={4} key={feature.id}>
+      <Card className="feature-card">
+        <CardContent textAlign="center">
+          <Box
+            className="feature-icon"
+            style={{ backgroundColor: feature.color }}
+            aria-hidden="true"
+          >
+            <IconComponent />
+          </Box>
+          <Typography
+            variant="h6"
+            className="feature-title"
+            mt={2}
+            component="h4"
+          >
+            {feature.title}
+          </Typography>
+          <Typography variant="body2" className="feature-description">
+            {feature.description}
+          </Typography>
+        </CardContent>
+      </Card>
+    </Grid>
+  )
+})
+
+FeatureCard.displayName = "FeatureCard"
+
+// Memoized Stats Card component for better performance
+const StatsCard = memo(({ stat }) => {
+  const IconComponent = stat.icon
+  return (
+    <Grid item xs={12} sm={4} key={stat.id}>
+      <Box textAlign="center">
+        <Box className="stat-icon" aria-hidden="true">
+          <IconComponent />
+        </Box>
+        <Typography variant="h3" className="stat-value" component="div">
+          {stat.value}
+        </Typography>
+        <Typography variant="body1" className="stat-label">
+          {stat.label}
+        </Typography>
+      </Box>
+    </Grid>
+  )
+})
+
+StatsCard.displayName = "StatsCard"
 
 const LandingPage = ({ onGetStarted, className = "" }) => {
   const [email, setEmail] = useState("")
@@ -590,63 +647,18 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
         </Typography>
 
         <Grid container spacing={4}>
-          {FEATURES_DATA.map((feature) => {
-            const IconComponent = feature.icon
-            return (
-              <Grid item xs={12} md={4} key={feature.id}>
-                <Card className="feature-card">
-                  <CardContent textAlign="center">
-                    <Box
-                      className="feature-icon"
-                      style={{ backgroundColor: feature.color }}
-                      aria-hidden="true"
-                    >
-                      <IconComponent />
-                    </Box>
-                    <Typography
-                      variant="h6"
-                      className="feature-title"
-                      mt={2}
-                      component="h4"
-                    >
-                      {feature.title}
-                    </Typography>
-                    <Typography variant="body2" className="feature-description">
-                      {feature.description}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            )
-          })}
+          {FEATURES_DATA.map((feature) => (
+            <FeatureCard key={feature.id} feature={feature} />
+          ))}
         </Grid>
       </Container>
 
       {/* Stats Section */}
       <Container maxWidth="lg" className="stats-section">
         <Grid container spacing={4} justifyContent="center">
-          {STATS_DATA.map((stat) => {
-            const IconComponent = stat.icon
-            return (
-              <Grid item xs={12} sm={4} key={stat.id}>
-                <Box textAlign="center">
-                  <Box className="stat-icon" aria-hidden="true">
-                    <IconComponent />
-                  </Box>
-                  <Typography
-                    variant="h3"
-                    className="stat-value"
-                    component="div"
-                  >
-                    {stat.value}
-                  </Typography>
-                  <Typography variant="body1" className="stat-label">
-                    {stat.label}
-                  </Typography>
-                </Box>
-              </Grid>
-            )
-          })}
+          {STATS_DATA.map((stat) => (
+            <StatsCard key={stat.id} stat={stat} />
+          ))}
         </Grid>
       </Container>
 
@@ -686,4 +698,5 @@ LandingPage.defaultProps = {
   className: ""
 }
 
-export default LandingPage
+// Export memoized component for better performance
+export default memo(LandingPage)

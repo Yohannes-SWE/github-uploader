@@ -1,6 +1,10 @@
 import os
 import shutil
 import tempfile
+from functools import lru_cache
+from datetime import datetime, timedelta
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import (
     FastAPI,
     Request,
@@ -10,16 +14,18 @@ from fastapi import (
     Response,
     Depends,
     HTTPException,
+    BackgroundTasks,
 )
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from starlette.middleware.sessions import SessionMiddleware
 import requests
 import openai
 import git
 from dotenv import load_dotenv
-from typing import List
+from typing import List, Optional, Dict, Any
 import uuid
 import time
 import json
@@ -30,7 +36,50 @@ import base64
 
 load_dotenv()
 
-app = FastAPI()
+# Performance optimizations
+executor = ThreadPoolExecutor(max_workers=4)
+
+# Cache for expensive operations
+@lru_cache(maxsize=128)
+def get_app_config_cached(project_type: str, dependencies: str) -> Dict[str, Any]:
+    """Cached application configuration detection"""
+    # This would contain the actual logic for detecting app config
+    return {"type": project_type, "dependencies": dependencies}
+
+# Request validation cache
+REQUEST_CACHE = {}
+CACHE_EXPIRY = 300  # 5 minutes
+
+def get_cached_response(cache_key: str) -> Optional[Dict[str, Any]]:
+    """Get cached response if still valid"""
+    if cache_key in REQUEST_CACHE:
+        cached_data, timestamp = REQUEST_CACHE[cache_key]
+        if time.time() - timestamp < CACHE_EXPIRY:
+            return cached_data
+        else:
+            del REQUEST_CACHE[cache_key]
+    return None
+
+def set_cached_response(cache_key: str, data: Dict[str, Any]) -> None:
+    """Cache response with timestamp"""
+    REQUEST_CACHE[cache_key] = (data, time.time())
+
+# Async file operations
+async def async_file_operation(func, *args, **kwargs):
+    """Run file operations in thread pool"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(executor, func, *args, **kwargs)
+
+app = FastAPI(
+    title="RepoTorpedo API",
+    description="High-performance deployment automation API",
+    version="2.0.0",
+    docs_url="/docs" if os.getenv("ENVIRONMENT") != "production" else None,
+    redoc_url="/redoc" if os.getenv("ENVIRONMENT") != "production" else None
+)
+
+# Add performance middleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Get allowed origins from environment or use defaults
 ALLOWED_ORIGINS = (

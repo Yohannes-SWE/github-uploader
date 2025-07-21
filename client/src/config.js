@@ -1,96 +1,98 @@
-// Configuration for different environments
-const config = {
-  development: {
-    apiUrl: "https://api.repotorpedo.com",
-    environment: "development",
-    debug: true,
-    features: {
-      aiAnalysis: true,
-      platformIntegration: true,
-      cicdGeneration: true
-    }
-  },
-  production: {
-    apiUrl: process.env.REACT_APP_API_URL || "https://api.repotorpedo.com",
-    environment: "production",
-    debug: false,
-    features: {
-      aiAnalysis: true,
-      platformIntegration: true,
-      cicdGeneration: true
-    }
-  }
+// Optimized configuration with better tree shaking and performance
+const isDevelopment = process.env.NODE_ENV === "development"
+const isProduction = process.env.NODE_ENV === "production"
+
+// Minimal config object to reduce bundle size
+const baseConfig = {
+  apiUrl: process.env.REACT_APP_API_URL || "https://api.repotorpedo.com",
+  environment: process.env.NODE_ENV || "production",
+  debug: isDevelopment,
+  frontendUrl: "https://repotorpedo.com"
 }
 
-// Force production environment to always use production URLs
-const environment = "production"
-
-// Debug logging
-console.log("Environment detection:", {
-  REACT_APP_ENVIRONMENT: process.env.REACT_APP_ENVIRONMENT,
-  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
-  forcedEnvironment: environment
-})
-
-// Export current configuration
-export const currentConfig = config[environment]
-
-// Export API URL for easy access - always use production URL
-export const API_URL =
-  process.env.REACT_APP_API_URL || "https://api.repotorpedo.com"
-
-// Debug logging
-console.log("API URL resolved:", API_URL)
-
-// Export environment info
-export const ENVIRONMENT = currentConfig.environment
-export const DEBUG = currentConfig.debug
-
-// Export feature flags
-export const FEATURES = currentConfig.features
-
-// Export domain information
-export const DOMAINS = {
-  frontend: "repotorpedo.com",
-  backend: "api.repotorpedo.com"
+// Feature flags - only include what's needed
+const features = {
+  aiAnalysis: true,
+  platformIntegration: true,
+  cicdGeneration: true
 }
 
-// Helper function to get full API URL
-export const getApiUrl = (endpoint) => {
-  return `${API_URL}${endpoint}`
+// Domain configuration with lazy loading
+const domainConfig = {
+  api: "api.repotorpedo.com",
+  frontend: "repotorpedo.com"
 }
 
-// Helper function to check if feature is enabled
+// Optimized environment detection - no console.log in production
+if (isDevelopment) {
+  console.log("Environment detection:", {
+    NODE_ENV: process.env.NODE_ENV,
+    REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+    API_URL: baseConfig.apiUrl
+  })
+}
+
+// API URL resolution with caching
+let cachedApiUrl = null
+export const getApiUrl = () => {
+  if (cachedApiUrl) return cachedApiUrl
+
+  cachedApiUrl = isDevelopment ? "http://localhost:8000" : baseConfig.apiUrl
+
+  return cachedApiUrl
+}
+
+// Feature flag checker with memoization
+const featureCache = new Map()
 export const isFeatureEnabled = (feature) => {
-  return FEATURES[feature] || false
-}
-
-// Helper function for logging (respects debug setting)
-export const log = (message, data = null) => {
-  if (DEBUG) {
-    console.log(`[${ENVIRONMENT}] ${message}`, data)
+  if (featureCache.has(feature)) {
+    return featureCache.get(feature)
   }
+
+  const enabled = features[feature] === true
+  featureCache.set(feature, enabled)
+  return enabled
 }
 
-// Helper function for error logging
-export const logError = (message, error = null) => {
-  console.error(`[${ENVIRONMENT}] ERROR: ${message}`, error)
-}
+// Optimized logging - tree-shakeable in production
+export const log = isDevelopment ? console.log : () => {}
+export const logError = isProduction ? console.error : console.warn
 
-// Helper function to get domain URLs
+// Domain helper with caching
+let domainCache = null
 export const getDomainUrl = (type = "frontend") => {
-  const protocol = "https"
-  const domain = DOMAINS[type]
-  return `${protocol}://${domain}`
+  if (domainCache) return domainCache[type]
+
+  domainCache = {
+    frontend: `https://${domainConfig.frontend}`,
+    api: `https://${domainConfig.api}`
+  }
+
+  return domainCache[type]
 }
 
+// Export API URL for legacy compatibility
+export const API_URL = getApiUrl()
+
+// Export environment variables
+export const ENVIRONMENT = baseConfig.environment
+export const DEBUG = baseConfig.debug
+export const FRONTEND_URL = baseConfig.frontendUrl
+
+// Export features object
+export const FEATURES = features
+
+// Export domain config
+export const DOMAINS = domainConfig
+
+// Main config export - optimized for tree shaking
 const configExport = {
   API_URL,
-  FRONTEND_URL: "https://repotorpedo.com",
-  ENVIRONMENT,
-  DEBUG,
-  FEATURES,
-  DOMAINS,
+  FRONTEND_URL: baseConfig.frontendUrl,
+  ENVIRONMENT: baseConfig.environment,
+  DEBUG: baseConfig.debug,
+  FEATURES: features,
+  DOMAINS: domainConfig,
   getApiUrl,
   isFeatureEnabled,
   log,
