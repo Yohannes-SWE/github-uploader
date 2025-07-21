@@ -30,7 +30,7 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
 
   return (
     <Box className={`landing-page ${className}`}>
-      {/* Dark background */}
+      {/* Pure black background */}
       <Box
         sx={{
           position: "fixed",
@@ -43,7 +43,7 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
         }}
       />
 
-      {/* Minimal Header */}
+      {/* Minimal Header - matching Antimetal style */}
       <Box
         sx={{
           position: "fixed",
@@ -51,7 +51,7 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
           left: 0,
           right: 0,
           zIndex: 10,
-          py: 2,
+          py: 3,
           px: 4
         }}
       >
@@ -62,29 +62,31 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
             alignItems: "center"
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <GitHub sx={{ color: "white", fontSize: 20 }} />
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <GitHub sx={{ color: "white", fontSize: 18 }} />
             <Typography
               variant="body1"
               sx={{
                 color: "white",
                 fontWeight: 500,
-                fontSize: "14px"
+                fontSize: "15px",
+                letterSpacing: "-0.01em"
               }}
             >
               RepoTorpedo
             </Typography>
           </Box>
 
-          <Box sx={{ display: "flex", gap: 4 }}>
+          <Box sx={{ display: "flex", gap: 6 }}>
             <Typography
               component="a"
               href="#"
               sx={{
                 color: "rgba(255,255,255,0.7)",
                 textDecoration: "none",
-                fontSize: "14px",
+                fontSize: "15px",
                 fontWeight: 400,
+                letterSpacing: "-0.01em",
                 "&:hover": { color: "white" }
               }}
             >
@@ -96,8 +98,9 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
               sx={{
                 color: "rgba(255,255,255,0.7)",
                 textDecoration: "none",
-                fontSize: "14px",
+                fontSize: "15px",
                 fontWeight: 400,
+                letterSpacing: "-0.01em",
                 "&:hover": { color: "white" }
               }}
             >
@@ -109,8 +112,9 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
               sx={{
                 color: "rgba(255,255,255,0.7)",
                 textDecoration: "none",
-                fontSize: "14px",
+                fontSize: "15px",
                 fontWeight: 400,
+                letterSpacing: "-0.01em",
                 "&:hover": { color: "white" }
               }}
             >
@@ -120,7 +124,7 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
         </Box>
       </Box>
 
-      {/* Centered Content */}
+      {/* Centered Content - Antimetal inspired */}
       <Container maxWidth="md">
         <Box
           sx={{
@@ -133,43 +137,43 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
             px: 2
           }}
         >
-          {/* Main Headline */}
+          {/* Main Headline - Antimetal style */}
           <Typography
             variant="h1"
             sx={{
-              fontSize: { xs: "2.5rem", sm: "3.5rem", md: "4.5rem" },
-              fontWeight: 400,
+              fontSize: { xs: "2.75rem", sm: "4rem", md: "5rem" },
+              fontWeight: 500,
               color: "white",
-              lineHeight: 1.2,
-              letterSpacing: "-0.02em",
-              mb: 6,
-              maxWidth: "800px",
+              lineHeight: 1.1,
+              letterSpacing: "-0.025em",
+              mb: 8,
+              maxWidth: "900px",
               fontFamily:
                 "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
             }}
           >
-            Deploy your code in{" "}
+            It has never been easier{" "}
             <Box
               component="span"
               sx={{
-                color: "rgba(255,255,255,0.4)"
+                color: "rgba(255,255,255,0.5)"
               }}
             >
-              seconds, not hours.
+              to deploy your code.
             </Box>
           </Typography>
 
-          {/* Simple CTA */}
+          {/* Simple CTA - Heyorbi inspired */}
           <Box
             component="form"
             onSubmit={handleEmailSubmit}
             sx={{
               display: "flex",
               gap: 2,
-              maxWidth: "400px",
+              maxWidth: "420px",
               width: "100%",
               flexDirection: { xs: "column", sm: "row" },
-              mb: 2
+              mb: 3
             }}
           >
             <TextField
@@ -180,23 +184,27 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
               sx={{
                 flex: 1,
                 "& .MuiOutlinedInput-root": {
-                  background: "rgba(255,255,255,0.05)",
+                  background: "rgba(255,255,255,0.04)",
                   borderRadius: "8px",
                   color: "white",
-                  fontSize: "14px",
+                  fontSize: "15px",
+                  py: 0.5,
                   "& fieldset": {
-                    borderColor: "rgba(255,255,255,0.2)"
+                    borderColor: "rgba(255,255,255,0.15)"
                   },
                   "&:hover fieldset": {
-                    borderColor: "rgba(255,255,255,0.3)"
+                    borderColor: "rgba(255,255,255,0.25)"
                   },
                   "&.Mui-focused fieldset": {
-                    borderColor: "white"
+                    borderColor: "rgba(255,255,255,0.4)"
                   }
                 },
-                "& .MuiInputBase-input::placeholder": {
-                  color: "rgba(255,255,255,0.5)",
-                  opacity: 1
+                "& .MuiInputBase-input": {
+                  py: 1.5,
+                  "&::placeholder": {
+                    color: "rgba(255,255,255,0.5)",
+                    opacity: 1
+                  }
                 }
               }}
             />
@@ -209,21 +217,23 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
                 background: "white",
                 color: "black",
                 fontWeight: 500,
-                px: 3,
-                py: 1.5,
+                px: 4,
+                py: 1.75,
                 borderRadius: "8px",
                 textTransform: "none",
-                fontSize: "14px",
+                fontSize: "15px",
+                letterSpacing: "-0.01em",
+                minWidth: "140px",
                 "&:hover": {
-                  background: "rgba(255,255,255,0.9)"
+                  background: "rgba(255,255,255,0.92)"
                 },
                 "&:disabled": {
-                  background: "rgba(255,255,255,0.2)",
-                  color: "rgba(255,255,255,0.5)"
+                  background: "rgba(255,255,255,0.15)",
+                  color: "rgba(255,255,255,0.4)"
                 }
               }}
             >
-              {isLoading ? "Starting..." : "Get Started"}
+              {isLoading ? "Starting..." : "Get started"}
             </Button>
           </Box>
 
@@ -231,11 +241,12 @@ const LandingPage = ({ onGetStarted, className = "" }) => {
             variant="body2"
             sx={{
               color: "rgba(255,255,255,0.4)",
-              fontSize: "12px",
-              fontWeight: 400
+              fontSize: "13px",
+              fontWeight: 400,
+              letterSpacing: "-0.01em"
             }}
           >
-            Free forever • No credit card required
+            Free forever · No credit card required
           </Typography>
         </Box>
       </Container>
